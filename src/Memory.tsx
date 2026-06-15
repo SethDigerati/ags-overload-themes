@@ -24,18 +24,18 @@ export default function Memory() {
       application={app}
     >
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
-        <label wrap class="section-header" label="RAM" />
+        <label wrap xalign={0} class="section-header" label="RAM" />
         <label ellipsize={3} maxWidthChars={50} class="gray1" xalign={1}
           label={createComputed(() => `Used: ${memUsed()} (${memPerc()}%) → ${memEasyFree()} Free / ${memTotal()}`)} />
         <levelbar value={createComputed(() => memPerc() / 100)}
           cssClasses={createComputed(() => [memBarClass()])} />
-        <label wrap class="section-header" label="SWAP" />
+        <label wrap xalign={0} class="section-header" label="SWAP" />
         <label ellipsize={3} maxWidthChars={50} class="gray1" xalign={1}
           label={createComputed(() => `Used: ${swapUsed()} (${swapPerc()}%) → ${swapFree()} Free / ${swapMax()}`)} />
         <levelbar value={createComputed(() => swapPerc() / 100)} />
-        <label wrap class="section-header" label="STORAGE DEVICES" />
+        <label wrap xalign={0} class="section-header" label="STORAGE DEVICES" />
         <label ellipsize={3} maxWidthChars={50} class="gray3" label={createComputed(() => storageDevices() || "N/A")} />
-        <label wrap class="section-header" label="DISK" />
+        <label wrap xalign={0} class="section-header" label="DISK" />
         <label ellipsize={3} maxWidthChars={50} class="gray1" xalign={1}
           label={createComputed(() => `Used: ${diskUsed()} (${diskPerc()}%) → ${diskFree()} Free / ${diskTotal()}`)} />
         <levelbar value={createComputed(() => diskPerc() / 100)} />

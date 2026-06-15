@@ -14,13 +14,13 @@ export default function System() {
   return (
     <window visible name="system" class="System" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
-        <label wrap class="section-header" label="SYSTEM" />
+        <label wrap xalign={0} class="section-header" label="SYSTEM" />
         <label wrap class="weekday" label={weekday} xalign={1} />
         <label wrap class="clock-large" label={timeStr} xalign={1} />
         <label wrap class="date-large" label={dateStr} xalign={1} />
         <label wrap class="gray1" label={createComputed(() => `${kernel()} | ${uptime()}`)} xalign={1} />
         <label wrap class="gray1" label={createComputed(() => nodename())} xalign={1} />
-        <label wrap class="section-header" label="BATTERY" />
+        <label wrap xalign={0} class="section-header" label="BATTERY" />
         <label wrap class="gray1" label={createComputed(() => {
           const p = batteryPerc()
           return p < 0 ? "No battery" : `${batteryStatus()} (${p}%)`

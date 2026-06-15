@@ -127,7 +127,7 @@ export default function WeatherWidget() {
   return (
     <window visible name="weather" class="Weather" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
-        <label wrap class="section-header" label="WEATHER" />
+        <label wrap xalign={0} class="section-header" label="WEATHER" />
         <label wrap class="gray1" label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} xalign={1} />
         <box>
           <image file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
@@ -142,7 +142,7 @@ export default function WeatherWidget() {
         <label wrap class="gray2" xalign={1}
           label={createComputed(() => `Wind: ${weather().windSpeed} km/h | Vis: ${weather().visibility} km`)} />
         <label wrap xalign={1} label={createComputed(() => { const m = moon(); return `${m.icon} ${m.name}` })} />
-        <label wrap class="section-header" label="5-DAY FORECAST" />
+        <label wrap xalign={0} class="section-header" label="5-DAY FORECAST" />
         <For each={forecast}>
           {(item) => (
             <box>

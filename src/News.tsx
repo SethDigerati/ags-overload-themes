@@ -71,7 +71,7 @@ export default function NewsWidget() {
   return (
     <window visible name="news" class="News" anchor={BOTTOM | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
-        <label wrap class="section-header" label="NEWS" />
+        <label wrap xalign={0} class="section-header" label="NEWS" />
         <label wrap class="gray3" label="SOURCE: FreeNewsApi.io" xalign={1} />
         <label wrap maxWidthChars={50} class="gray1" label={newsText} xalign={0} />
       </box>

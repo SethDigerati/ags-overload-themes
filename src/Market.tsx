@@ -5,7 +5,7 @@ import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
 import { env } from "../config"
 
-const { TOP, RIGHT } = Astal.WindowAnchor
+const { TOP, LEFT } = Astal.WindowAnchor
 
 const coinIds = ["bitcoin", "ethereum", "solana", "ripple", "dogecoin", "cardano", "binancecoin", "tron", "avalanche-2", "chainlink", "polkadot", "litecoin"]
 const coinNames = ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "TRX", "AVAX", "LINK", "DOT", "LTC"]
@@ -57,9 +57,9 @@ function Cell({ val }: { val: string }) {
 
 export default function MarketWidget() {
   return (
-    <window visible name="market" class="Market" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
+    <window visible name="market" class="Market" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
-        <label wrap class="section-header" label="MARKET" />
+        <label wrap xalign={0} class="section-header" label="MARKET" />
         <box>
           <label wrap label="ASSET" widthRequest={50} />
           <label wrap class="gray2" label="1h" xalign={1} widthRequest={55} />
@@ -69,7 +69,7 @@ export default function MarketWidget() {
         <For each={assets}>
           {(item) => (
             <box>
-              <label wrap class="section-header" label={item.name} widthRequest={50} />
+              <label wrap xalign={0} class="section-header" label={item.name} widthRequest={50} />
               <Cell val={item.pct1h} />
               <Cell val={item.pct1d} />
               <Cell val={item.pct1w} />
