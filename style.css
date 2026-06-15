@@ -1,0 +1,146 @@
+window {
+  background-color: rgba(0, 0, 0, 0.8);
+  color: #EAEAEA;
+  font-family: "Iosevka";
+  font-size: 10pt;
+  border: 0;
+  padding: 0;
+}
+
+window.System {
+  margin-top: 10px;
+}
+
+window.Cpu {
+  margin-top: 10px;
+}
+
+window.Gpu {
+  margin-top: 680px;
+}
+
+window.Memory {
+  margin-top: 810px;
+}
+
+window.Network {
+  margin-top: 10px;
+}
+
+window.Weather {
+  margin-top: 650px;
+}
+
+window.LastFm {
+  margin-top: 320px;
+}
+
+window.Market {
+  margin-top: 10px;
+}
+
+window.News {
+  margin-top: 10px;
+}
+
+window.Quote {
+  margin-top: 10px;
+}
+
+window > box {
+  padding: 8px 12px;
+}
+
+label.section-header {
+  color: #FFE020;
+  font-weight: bold;
+  font-size: 11pt;
+}
+
+label.accent {
+  color: #EF5A29;
+}
+
+label.green {
+  color: #77B753;
+}
+
+label.gray1 {
+  color: #EAEAEA;
+}
+
+label.gray2 {
+  color: #AAAAAA;
+}
+
+label.gray3 {
+  color: #888888;
+}
+
+label.positive {
+  color: #77B753;
+}
+
+label.negative {
+  color: #FF0000;
+}
+
+label.weekday {
+  font-family: "Smash Stadium Font";
+  font-size: 38pt;
+  font-weight: normal;
+  color: #FFFFFF;
+}
+
+label.clock-large {
+  font-size: 18pt;
+  font-weight: bold;
+  color: #FFFFFF;
+}
+
+label.date-large {
+  font-size: 12pt;
+  color: #EAEAEA;
+}
+
+levelbar {
+  min-height: 6px;
+  min-width: 200px;
+}
+
+levelbar trough {
+  background-color: #333333;
+  border-radius: 3px;
+}
+
+levelbar block {
+  border-radius: 3px;
+}
+
+levelbar.high block {
+  background-color: #EF5A29;
+}
+
+levelbar.medium block {
+  background-color: #FFE020;
+}
+
+levelbar.low block {
+  background-color: #77B753;
+}
+
+graph {
+  background-color: #222222;
+  border: 1px solid #444444;
+}
+
+separator {
+  background-color: #444444;
+  min-height: 1px;
+}
+
+picture {
+  border-radius: 4px;
+}
+
+/*# sourceMappingURL=style.css.map */
