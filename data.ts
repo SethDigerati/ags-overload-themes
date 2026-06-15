@@ -162,7 +162,7 @@ function collectGpu() {
   const max = readSys(`${card}/gt_max_freq_mhz`) || readSys(`${card}/gt_RP0_freq_mhz`) || ""
   if (cur) setGpuFreqCur(cur.trim())
   if (max) setGpuFreqMax(max.trim())
-  const tz = run("for z in /sys/class/thermal/thermal_zone*; do [ -f $z/type ] && grep -qE 'amdgpu|i915|nouveau|nvidia' $z/type 2>/dev/null && cat $z/temp; done 2>/dev/null").trim()
+  const tz = run("for z in /sys/class/thermal/thermal_zone*; do [ -f $z/type ] && grep -qE 'amdgpu|i915|nouveau|nvidia|x86_pkg_temp' $z/type 2>/dev/null && cat $z/temp; done 2>/dev/null").trim()
   if (tz) { const t = parseFloat(tz.split("\n")[0]) / 1000; setGpuTemp(String(Math.round(t))) }
 }
 
