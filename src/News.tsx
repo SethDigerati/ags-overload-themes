@@ -25,22 +25,31 @@ const newsText = createComputed(() => {
   return text
 })
 
-const categories = ["tech", "science", "space", "climate"]
+const categoryMap: Record<string, string> = {
+  tech: "technology",
+  science: "science",
+  space: "space",
+  climate: "environment",
+}
+
+const categories = Object.keys(categoryMap)
 
 async function fetchCategory(cat: string) {
   if (!API_KEY) return
   try {
-    let url: string
-    if (cat === "space") url = `https://newsapi.org/v2/everything?q=space&language=en&pageSize=2&apiKey=${API_KEY}`
-    else if (cat === "climate") url = `https://newsapi.org/v2/everything?q=climate&language=en&pageSize=2&apiKey=${API_KEY}`
-    else url = `https://newsapi.org/v2/top-headlines?language=en&category=${cat}&pageSize=2&apiKey=${API_KEY}`
-    const res = await fetch(url)
+    const topic = categoryMap[cat]
+    const res = await fetch(
+      `https://api.freenewsapi.io/v1/news?language=en&topic=${topic}&page_size=2`,
+      { headers: { "x-api-key": API_KEY } }
+    )
     const data = await res.json()
-    if (data?.articles?.length) {
+    if (data?.error) { console.error(`news ${cat}:`, data.error); return }
+    const articles = data?.data
+    if (articles?.length) {
       const current = { ...newsData() }
-      current[cat] = data.articles.slice(0, 2).map((a: any) => ({
+      current[cat] = articles.slice(0, 2).map((a: any) => ({
         title: a.title || "N/A",
-        source: a.source?.name || "",
+        source: a.publisher || "",
       }))
       setNewsData(current)
     }
@@ -49,15 +58,22 @@ async function fetchCategory(cat: string) {
 
 let catIdx = 0
 interval(300000, () => { fetchCategory(categories[catIdx % categories.length]).catch((e) => console.error("news poll:", e)); catIdx++ })
-categories.forEach(c => fetchCategory(c).catch((e) => console.error("news init:", e)))
+
+async function initAll() {
+  for (const c of categories) {
+    await fetchCategory(c)
+    await new Promise(r => setTimeout(r, 1500))
+  }
+}
+initAll()
 
 export default function NewsWidget() {
   return (
     <window visible name="news" class="News" anchor={BOTTOM | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap class="section-header" label="NEWS" />
-        <label wrap class="gray3" label="SOURCE: NewsAPI.org" xalign={1} />
-        <label wrap class="gray1" label={newsText} xalign={0} />
+        <label wrap class="gray3" label="SOURCE: FreeNewsApi.io" xalign={1} />
+        <label wrap maxWidthChars={50} class="gray1" label={newsText} xalign={0} />
       </box>
     </window>
   )
