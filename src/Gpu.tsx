@@ -5,6 +5,7 @@ import { createComputed } from "ags"
 import {
   gpuModel, gpuDriver, gpuType, gpuMemUsed, gpuMemTotal, gpuFreqCur, gpuFreqMax, gpuTemp, kernel,
 } from "../data"
+import MarqueeLabel from "./MarqueeLabel"
 
 const { TOP, RIGHT } = Astal.WindowAnchor
 
@@ -24,7 +25,7 @@ export default function Gpu() {
         <label wrap class="section-header" label={createComputed(() => `GPU (${gpuTemp()}°C)`)} />
         <box>
           <label wrap class="gray2" label="Model:" widthRequest={60} />
-          <label wrap maxWidthChars={45} label={createComputed(() => gpuModel())} class="gray2" xalign={1} />
+          <MarqueeLabel text={createComputed(() => gpuModel())} widthRequest={330} className="gray2" />
         </box>
         <box>
           <label wrap class="gray2" label="Type:" widthRequest={60} />
