@@ -23,33 +23,33 @@ export default function Network() {
       application={app}
     >
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
-        <label wrap class="section-header" label={createComputed(() => `NETWORK(${netIface()})`)} />
+        <label wrap xalign={0} class="section-header" label={createComputed(() => `NETWORK(${netIface()})`)} />
         <box>
           <label wrap class="gray2" label="Status:" widthRequest={70} />
-          <label wrap label={createComputed(() => netStatus())}
+          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netStatus())}
             cssClasses={createComputed(() => [netStatus() === "ONLINE" ? "positive" : "negative"])} />
         </box>
         <box>
           <label wrap class="gray2" label="SSID:" widthRequest={70} />
-          <label wrap label={createComputed(() => netSSID())} xalign={1} />
+          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netSSID())} xalign={1} />
         </box>
         <box>
           <label wrap class="gray2" label="Signal:" widthRequest={70} />
-          <label wrap label={createComputed(() => `${netSignal()}%`)} xalign={1} />
+          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => `${netSignal()}%`)} xalign={1} />
         </box>
         <box>
           <label wrap class="gray2" label="Local IP:" widthRequest={70} />
-          <label wrap label={createComputed(() => netLocalIp())} xalign={1} />
+          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netLocalIp())} xalign={1} />
         </box>
-        <label wrap class="gray2" label={createComputed(() => `Down: ${netDownSpeed()} KiB/s`)} xalign={1} />
-        <label wrap class="gray2" label={createComputed(() => `Up: ${netUpSpeed()} KiB/s`)} xalign={1} />
+        <label ellipsize={3} maxWidthChars={50} class="gray2" label={createComputed(() => `Down: ${netDownSpeed()} KiB/s`)} xalign={1} />
+        <label ellipsize={3} maxWidthChars={50} class="gray2" label={createComputed(() => `Up: ${netUpSpeed()} KiB/s`)} xalign={1} />
         <box>
           <label wrap class="gray2" label="Total DL:" widthRequest={70} />
-          <label wrap label={createComputed(() => netDownTotal())} xalign={1} />
+          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netDownTotal())} xalign={1} />
         </box>
         <box>
           <label wrap class="gray2" label="Total UL:" widthRequest={70} />
-          <label wrap label={createComputed(() => netUpTotal())} xalign={1} />
+          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netUpTotal())} xalign={1} />
         </box>
       </box>
     </window>
