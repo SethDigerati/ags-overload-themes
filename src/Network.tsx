@@ -22,7 +22,7 @@ export default function Network() {
       exclusivity={Astal.Exclusivity.NORMAL}
       application={app}
     >
-      <box orientation={Gtk.Orientation.VERTICAL}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap class="section-header" label={createComputed(() => `NETWORK(${netIface()})`)} />
         <box>
           <label wrap class="gray2" label="Status:" widthRequest={70} />

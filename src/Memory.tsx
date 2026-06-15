@@ -24,7 +24,7 @@ export default function Memory() {
       exclusivity={Astal.Exclusivity.NORMAL}
       application={app}
     >
-      <box orientation={Gtk.Orientation.VERTICAL}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap class="section-header" label="RAM" />
         <label wrap class="gray1" xalign={1}
           label={createComputed(() => `Used: ${memUsed()} (${memPerc()}%) → ${memEasyFree()} Free / ${memTotal()}`)} />

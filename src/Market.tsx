@@ -56,7 +56,7 @@ function Cell({ val }: { val: string }) {
 export default function MarketWidget() {
   return (
     <window visible name="market" class="Market" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap class="section-header" label="MARKET" />
         <box>
           <label wrap label="ASSET" widthRequest={50} />

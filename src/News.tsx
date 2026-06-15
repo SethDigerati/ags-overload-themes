@@ -54,7 +54,7 @@ categories.forEach(c => fetchCategory(c).catch((e) => console.error("news init:"
 export default function NewsWidget() {
   return (
     <window visible name="news" class="News" anchor={BOTTOM | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap class="section-header" label="NEWS" />
         <label wrap class="gray3" label="SOURCE: NewsAPI.org" xalign={1} />
         <label wrap class="gray1" label={newsText} xalign={0} />

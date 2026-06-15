@@ -13,7 +13,7 @@ const dateStr = createPoll("", 86400000, "date '+%B %d, %Y'")
 export default function System() {
   return (
     <window visible name="system" class="System" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap class="section-header" label="SYSTEM" />
         <label wrap class="weekday" label={weekday} xalign={1} />
         <label wrap class="clock-large" label={timeStr} xalign={1} />

@@ -1,6 +1,7 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { createComputed } from "ags"
+
 import {
   gpuModel, gpuDriver, gpuType, gpuMemUsed, gpuMemTotal, gpuFreqCur, gpuFreqMax, gpuTemp, kernel,
 } from "../data"
@@ -20,11 +21,11 @@ export default function Gpu() {
       exclusivity={Astal.Exclusivity.NORMAL}
       application={app}
     >
-      <box orientation={Gtk.Orientation.VERTICAL}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap class="section-header" label={createComputed(() => `GPU (${gpuTemp()}°C)`)} />
         <box>
           <label wrap class="gray2" label="Model:" widthRequest={60} />
-          <label wrap label={createComputed(() => gpuModel())} xalign={1} />
+          <label wrap maxWidthChars={45} label={createComputed(() => gpuModel())} class="gray2" xalign={1} />
         </box>
         <box>
           <label wrap class="gray2" label="Type:" widthRequest={60} />
