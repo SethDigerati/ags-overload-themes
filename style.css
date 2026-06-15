@@ -12,15 +12,19 @@ window.System {
 }
 
 window.Cpu {
-  margin-top: 130px;
+  margin-top: 200px;
+}
+
+window.Quote {
+  margin-top: 390px;
 }
 
 window.Gpu {
-  margin-top: 760px;
+  margin-top: 580px;
 }
 
 window.Memory {
-  margin-top: 900px;
+  margin-top: 770px;
 }
 
 window.Network {
@@ -28,23 +32,19 @@ window.Network {
 }
 
 window.Weather {
-  margin-top: 520px;
+  margin-top: 200px;
 }
 
 window.LastFm {
-  margin-top: 210px;
+  margin-top: 390px;
 }
 
 window.Market {
-  margin-top: 340px;
+  margin-top: 580px;
 }
 
 window.News {
   margin-top: 10px;
-}
-
-window.Quote {
-  margin-top: 650px;
 }
 
 window > box {
