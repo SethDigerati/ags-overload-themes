@@ -12,15 +12,15 @@ window.System {
 }
 
 window.Cpu {
-  margin-top: 10px;
+  margin-top: 130px;
 }
 
 window.Gpu {
-  margin-top: 680px;
+  margin-top: 760px;
 }
 
 window.Memory {
-  margin-top: 810px;
+  margin-top: 900px;
 }
 
 window.Network {
@@ -28,15 +28,15 @@ window.Network {
 }
 
 window.Weather {
-  margin-top: 650px;
+  margin-top: 520px;
 }
 
 window.LastFm {
-  margin-top: 320px;
+  margin-top: 210px;
 }
 
 window.Market {
-  margin-top: 10px;
+  margin-top: 340px;
 }
 
 window.News {
@@ -44,7 +44,7 @@ window.News {
 }
 
 window.Quote {
-  margin-top: 10px;
+  margin-top: 650px;
 }
 
 window > box {
