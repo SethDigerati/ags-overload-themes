@@ -18,7 +18,8 @@ const [forex, setForex] = createState("")
 async function fetchMarket() {
   try {
     const res = await fetch(
-      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds.join(",")}&price_change_percentage=1h,24h,7d&order=market_cap_desc`
+      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds.join(",")}&price_change_percentage=1h,24h,7d&order=market_cap_desc`,
+      { headers: { "User-Agent": "ags-overload-themes/1.0" } }
     )
     const data = await res.json()
     if (!data?.length) return
@@ -30,6 +31,7 @@ async function fetchMarket() {
       pct1w: (d.price_change_percentage_7d_in_currency ?? 0).toFixed(1),
     }))
     setAssets(updated)
+    console.log("market: got", updated.length, "coins")
   } catch (e) { console.error("market fetch:", e) }
 
   try {

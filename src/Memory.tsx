@@ -18,7 +18,6 @@ export default function Memory() {
       name="memory"
       class="Memory"
       anchor={TOP | RIGHT}
-      marginTop={810}
       marginRight={0}
       widthRequest={400}
       exclusivity={Astal.Exclusivity.NORMAL}

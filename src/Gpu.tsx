@@ -15,7 +15,6 @@ export default function Gpu() {
       name="gpu"
       class="Gpu"
       anchor={TOP | RIGHT}
-      marginTop={680}
       marginRight={0}
       widthRequest={400}
       exclusivity={Astal.Exclusivity.NORMAL}
