@@ -22,9 +22,9 @@ fetchQuote().catch((e) => console.error("quote init:", e))
 export default function QuoteWidget() {
   return (
     <window visible name="quote" class="Quote" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap class="section-header" label="QUOTE" />
-        <label wrap class="gray1" label={createComputed(() => quote().text)} xalign={0} />
+        <label wrap maxWidthChars={50} class="gray1" label={createComputed(() => quote().text)} xalign={0} />
         <label wrap class="accent" label={createComputed(() => `~${quote().author}~`)} xalign={1} />
       </box>
     </window>

@@ -126,7 +126,7 @@ fetchLocation().then(() => { fetchWeather(); fetchForecast() }).catch((e) => con
 export default function WeatherWidget() {
   return (
     <window visible name="weather" class="Weather" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap class="section-header" label="WEATHER" />
         <label wrap class="gray1" label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} xalign={1} />
         <box>

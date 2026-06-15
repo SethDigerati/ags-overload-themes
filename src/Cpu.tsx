@@ -10,7 +10,7 @@ export default function Cpu() {
 
   return (
     <window visible name="cpu" class="Cpu" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap class="section-header" label={createComputed(() => `CPU (${cpuTemp()}°C)`)} />
         <label wrap class="gray1" label={createComputed(() => cpuModel())} xalign={1} />
         <label wrap class="gray1" label={createComputed(() => `${cpuFreq()} / ${cpuMaxFreq()}`)} xalign={1} />

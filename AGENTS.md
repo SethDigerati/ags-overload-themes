@@ -14,7 +14,7 @@ Port `SethDigerati/conky-themes-repo` (10 Conky widgets) to an AGS v3 personal c
 ## Key Conventions
 - `createState` returns `[Accessor<T>, Setter<T>]` — always destructure: `const [state, setState] = createState(value)`
 - Accessors are functions: `state()` to read, `setState(val)` to write
-- Widget files use `.tsx` (JSX) — supported intrinsic elements: `window`, `box`, `label`, `image`, `levelbar`, `stack`, `revealer`, `overlay`, `centerbox`, `scrollablewindow`, `entry`, `button`, `togglebutton`, `switch`, `menubutton`, `popover`, `drawingarea`, `slider`
+- Widget files use `.tsx` (JSX) — supported intrinsic elements: `window`, `box`, `label`, `image`, `levelbar`, `stack`, `revealer`, `overlay`, `centerbox`, `scrolledwindow`, `entry`, `button`, `togglebutton`, `switch`, `menubutton`, `popover`, `drawingarea`, `slider`
 - `<image file={path}>` for images (NOT `<picture>`)
 - `orientation={Gtk.Orientation.VERTICAL}` for vertical boxes (NOT `vertical`)
 - `ellipsize={3}` for text truncation (NOT `truncate`)
