@@ -134,8 +134,17 @@ function findBattery(): string {
   return ""
 }
 
+function findDrmCard(): string {
+  for (let i = 0; i < 8; i++) {
+    const v = readSys(`/sys/class/drm/card${i}/device/vendor`)
+    if (v) return `/sys/class/drm/card${i}`
+  }
+  return ""
+}
+
 function collectGpu() {
-  const card = "/sys/class/drm/card0"
+  const card = findDrmCard()
+  if (!card) return
   const vendor = readSys(`${card}/device/vendor`)
   if (!vendor) return
   const name = run("lspci 2>/dev/null | grep -i vga | head -1 | sed 's/.*://' | sed 's/(.*//'").trim()
