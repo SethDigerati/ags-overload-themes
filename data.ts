@@ -126,7 +126,7 @@ function parseMem() {
 }
 
 function findBattery(): string {
-  const ls = readSys("/sys/class/power_supply")
+  const ls = exec("ls /sys/class/power_supply/ 2>/dev/null")
   for (const e of ls.split("\n")) {
     if (readSys(`/sys/class/power_supply/${e}/type`) === "Battery")
       return `/sys/class/power_supply/${e}`
