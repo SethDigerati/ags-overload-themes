@@ -21,6 +21,7 @@ export const [cpuFreq, setCpuFreq] = createState("N/A")
 export const [cpuMaxFreq, setCpuMaxFreq] = createState("N/A")
 export const [cpuTemp, setCpuTemp] = createState("N/A")
 export const [corePercs, setCorePercs] = createState<number[]>([])
+export const [coreBars, setCoreBars] = createState<{ idx: number; h: number; cls: string }[]>([])
 
 export const [memPerc, setMemPerc] = createState(0)
 export const [memUsed, setMemUsed] = createState("0")
@@ -77,6 +78,8 @@ export const [uptime, setUptime] = createState("N/A")
 export const [nodename, setNodename] = createState("")
 
 let prevCpuIdle = 0, prevCpuTotal = 0
+let prevCoreIdle: number[] = []
+let prevCoreTotal: number[] = []
 let _prevRx = 0, _prevTx = 0, _prevDiskRead = 0, _prevDiskWrite = 0
 
 function calcCpuPerc(): number {
@@ -98,11 +101,28 @@ function calcCorePercs(): number[] {
   const stat = readSys("/proc/stat")
   if (!stat) return []
   const cores: number[] = []
+  const idle: number[] = []
+  const total: number[] = []
   for (const line of stat.split("\n")) {
     if (!line.startsWith("cpu") || line.startsWith("cpu ")) continue
     const vals = line.trim().split(/\s+/).slice(1).map(Number)
-    if (vals.length >= 4) cores.push(Math.round((1 - (vals[3] + (vals[4] || 0)) / vals.reduce((a, b) => a + b, 0)) * 100))
+    if (vals.length >= 4) {
+      idle.push(vals[3] + (vals[4] || 0))
+      total.push(vals.reduce((a, b) => a + b, 0))
+    }
   }
+  if (prevCoreIdle.length === 0 || prevCoreTotal.length === 0 || prevCoreIdle.length !== idle.length) {
+    prevCoreIdle = idle
+    prevCoreTotal = total
+    return idle.map(() => 0)
+  }
+  for (let i = 0; i < idle.length; i++) {
+    const dIdle = idle[i] - prevCoreIdle[i]
+    const dTotal = total[i] - prevCoreTotal[i]
+    cores.push(dTotal ? Math.round((1 - dIdle / dTotal) * 100) : 0)
+  }
+  prevCoreIdle = idle
+  prevCoreTotal = total
   return cores
 }
 
@@ -265,7 +285,13 @@ function updateAll() {
     const p = calcCpuPerc()
     setCpuPerc(p)
     setCpuPercNorm(p / 100)
-    setCorePercs(calcCorePercs())
+    const cores = calcCorePercs()
+    setCorePercs(cores)
+    setCoreBars(cores.map((c, idx) => ({
+      idx,
+      h: Math.max(1, Math.round((c / 100) * 40)),
+      cls: c >= 90 ? "cpu-red" : c >= 75 ? "cpu-orange" : "cpu-white",
+    })))
     collectSys()
     parseMem()
     collectBattery()
