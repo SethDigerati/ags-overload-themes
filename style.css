@@ -105,30 +105,23 @@ label.date-large {
 
 levelbar {
   min-height: 4px;
-  max-height: 4px;
   min-width: 200px;
-  background-color: transparent;
 }
-
 levelbar trough {
-  background-color: transparent;
-  border: 1px solid #FFFFFF;
+  background: transparent;
+  border: 1px solid #555555;
 }
-
-levelbar block {
+levelbar trough block {
   border-radius: 0;
 }
-
-levelbar.high block {
-  background-color: #FF0000;
+levelbar.cpu-white trough block {
+  background: #FFFFFF;
 }
-
-levelbar.medium block {
-  background-color: #FF8C00;
+levelbar.cpu-orange trough block {
+  background: #FF8C00;
 }
-
-levelbar.low block {
-  background-color: #FFFFFF;
+levelbar.cpu-red trough block {
+  background: #FF0000;
 }
 
 graph {
