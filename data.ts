@@ -1,4 +1,4 @@
-import { createState } from "ags"
+import { createState, createComputed } from "ags"
 import { interval } from "ags/time"
 import { readFile, exec } from "./src/util"
 import { defaultInterface } from "./config"
@@ -14,6 +14,7 @@ function run(cmd: string): string {
 }
 
 export const [cpuPerc, setCpuPerc] = createState(0)
+export const cpuPercNorm = createComputed(() => cpuPerc() / 100)
 export const [cpuLoads, setCpuLoads] = createState("0.00 0.00 0.00")
 export const [cpuModel, setCpuModel] = createState("N/A")
 export const [cpuFreq, setCpuFreq] = createState("N/A")
