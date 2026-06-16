@@ -14,6 +14,7 @@ function run(cmd: string): string {
 }
 
 export const [cpuPerc, setCpuPerc] = createState(0)
+export const [cpuPercNorm, setCpuPercNorm] = createState(0)
 export const [cpuLoads, setCpuLoads] = createState("0.00 0.00 0.00")
 export const [cpuModel, setCpuModel] = createState("N/A")
 export const [cpuFreq, setCpuFreq] = createState("N/A")
@@ -261,7 +262,9 @@ function formatBytes(bytes: number): string {
 
 function updateAll() {
   try {
-    setCpuPerc(calcCpuPerc())
+    const p = calcCpuPerc()
+    setCpuPerc(p)
+    setCpuPercNorm(p / 100)
     setCorePercs(calcCorePercs())
     collectSys()
     parseMem()

@@ -114,13 +114,33 @@ levelbar trough {
 levelbar trough block {
   border-radius: 0;
 }
-levelbar.cpu-white trough block {
+levelbar trough block.empty {
+  background: transparent;
+}
+levelbar.cpu-white trough block.filled {
   background: #FFFFFF;
 }
-levelbar.cpu-orange trough block {
-  background: #FF8C00;
+levelbar.cpu-orange trough block.filled {
+  background: #EF5A29;
 }
-levelbar.cpu-red trough block {
+levelbar.cpu-red trough block.filled {
+  background: #FF0000;
+}
+
+box.cpu-gauge {
+  background: transparent;
+  border: 1px solid #555555;
+}
+
+box.cpu-white {
+  background: #FFFFFF;
+}
+
+box.cpu-orange {
+  background: #EF5A29;
+}
+
+box.cpu-red {
   background: #FF0000;
 }
 
