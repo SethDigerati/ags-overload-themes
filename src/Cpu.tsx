@@ -1,7 +1,7 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { createComputed, For } from "ags"
-import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, cpuLoads, corePercs } from "../data"
+import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, cpuLoads, coreBars } from "../data"
 
 const { TOP, RIGHT } = Astal.WindowAnchor
 
@@ -18,16 +18,14 @@ export default function Cpu() {
           <label wrap class="gray1" label={createComputed(() => `${cpuFreq()}/${cpuMaxFreq()}`)} xalign={1} />
         </box>
         <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4}>
-          <For each={corePercs}>{(c, i) => {
-            const v = c, idx = i()
-            const h = Math.max(1, Math.round((v / 100) * 40))
+          <For each={coreBars}>{(bar) => {
             return (
               <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
                 <box widthRequest={40} heightRequest={40} class="cpu-gauge">
-                  <box widthRequest={40} heightRequest={h} valign={Gtk.Align.END}
-                    class={v >= 90 ? "cpu-red" : v >= 75 ? "cpu-orange" : "cpu-white"} />
+                  <box widthRequest={40} heightRequest={bar.h} valign={Gtk.Align.END}
+                    class={bar.cls} />
                 </box>
-                <label wrap class="gray2" label={`CPU${idx + 1}`} xalign={0.5} />
+                <label wrap class="gray2" label={`CPU${bar.idx + 1}`} xalign={0.5} />
               </box>
             )
           }}</For>
