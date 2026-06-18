@@ -104,7 +104,7 @@ label.date-large {
 }
 
 levelbar {
-  min-height: 4px;
+  min-height: 10px;
   min-width: 200px;
 }
 levelbar trough {
