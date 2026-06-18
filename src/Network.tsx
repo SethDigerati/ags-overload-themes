@@ -41,8 +41,8 @@ export default function Network() {
           <label wrap class="gray2" label="Local IP:" widthRequest={70} />
           <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netLocalIp())} xalign={1} />
         </box>
-        <label ellipsize={3} maxWidthChars={50} class="gray2" label={createComputed(() => `Down: ${netDownSpeed()} KiB/s`)} xalign={1} />
-        <label ellipsize={3} maxWidthChars={50} class="gray2" label={createComputed(() => `Up: ${netUpSpeed()} KiB/s`)} xalign={1} />
+        <label ellipsize={3} maxWidthChars={50} class="gray2" label={createComputed(() => `Down: ${netDownSpeed()}KiB/s`)} xalign={1} />
+        <label ellipsize={3} maxWidthChars={50} class="gray2" label={createComputed(() => `Up: ${netUpSpeed()}KiB/s`)} xalign={1} />
         <box>
           <label wrap class="gray2" label="Total DL:" widthRequest={70} />
           <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netDownTotal())} xalign={1} />
