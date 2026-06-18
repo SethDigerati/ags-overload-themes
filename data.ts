@@ -22,6 +22,7 @@ export const [cpuMaxFreq, setCpuMaxFreq] = createState("N/A")
 export const [cpuTemp, setCpuTemp] = createState("N/A")
 export const [corePercs, setCorePercs] = createState<number[]>([])
 export const [coreBars, setCoreBars] = createState<{ idx: number; h: number; cls: string }[]>([])
+export const [coreRows, setCoreRows] = createState<{ idx: number; h: number; cls: string }[][]>([])
 
 export const [memPerc, setMemPerc] = createState(0)
 export const [memUsed, setMemUsed] = createState("0")
@@ -287,11 +288,18 @@ function updateAll() {
     setCpuPercNorm(p / 100)
     const cores = calcCorePercs()
     setCorePercs(cores)
-    setCoreBars(cores.map((c, idx) => ({
+    const bars = cores.map((c, idx) => ({
       idx,
       h: Math.max(1, Math.round((c / 100) * 22)),
       cls: c >= 90 ? "cpu-red" : c >= 75 ? "cpu-yellow" : "cpu-white",
-    })))
+    }))
+    setCoreBars(bars)
+    const rows: typeof bars[] = []
+    for (let i = 0; i < Math.min(bars.length, 32); i += 8) {
+      rows.push(bars.slice(i, i + 8))
+      if (rows.length >= 4) break
+    }
+    setCoreRows(rows)
     collectSys()
     parseMem()
     collectBattery()
