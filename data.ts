@@ -227,8 +227,8 @@ function collectNet() {
     if (_prevRx === 0) { _prevRx = rx; _prevTx = tx; return }
     setNetDownSpeed(Math.max(0, Math.round((rx - _prevRx) / 1024)))
     setNetUpSpeed(Math.max(0, Math.round((tx - _prevTx) / 1024)))
-    setNetDownTotal((rx / 1073741824).toFixed(2) + " GiB")
-    setNetUpTotal((tx / 1073741824).toFixed(2) + " GiB")
+    setNetDownTotal((rx / 1073741824).toFixed(2) + "GiB")
+    setNetUpTotal((tx / 1073741824).toFixed(2) + "GiB")
     _prevRx = rx; _prevTx = tx
     break
   }
@@ -285,8 +285,8 @@ function collectTemps() {
 }
 
 function formatBytes(bytes: number): string {
-  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + " GiB"
-  if (bytes >= 1048576) return (bytes / 1048576).toFixed(0) + " MiB"
+  if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(1) + "GiB"
+  if (bytes >= 1048576) return (bytes / 1048576).toFixed(0) + "MiB"
   return (bytes / 1024).toFixed(0) + " KiB"
 }
 
