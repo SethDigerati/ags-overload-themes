@@ -171,13 +171,24 @@ function collectGpu() {
   if (name) setGpuModel(name)
   const drv = run("ls -d /sys/bus/pci/drivers/*/ 2>/dev/null | grep -E 'i915|amdgpu|nouveau|nvidia' | head -1 | xargs basename 2>/dev/null").trim()
   if (drv) setGpuDriver(drv)
-  if (vendor === "0x8086") setGpuType("Integrated")
+  if (vendor === "0x8086") { setGpuType("Integrated")
+    const mem = run("lspci -v -s $(lspci 2>/dev/null | grep -i vga | head -1 | cut -d' ' -f1) 2>/dev/null | grep 'prefetchable' | head -1 | sed 's/.*\\[size=//;s/\\].*//'").trim()
+    if (mem) { setGpuMemUsed("N/A"); setGpuMemTotal(mem) }
+    else { setGpuMemUsed("N/A"); setGpuMemTotal("N/A") }
+  }
   else if (vendor === "0x10de") { setGpuType("Discrete")
     const smi = run("nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null").trim()
     const m = smi.match(/([\d.]+),\s*([\d.]+)/)
     if (m) { setGpuMemUsed(m[1]); setGpuMemTotal(m[2]) }
   }
-  else if (vendor === "0x1002") setGpuType("Discrete")
+  else if (vendor === "0x1002") { setGpuType("Discrete")
+    const vramUsed = readSys(`${card}/device/mem_info_vram_used`)
+    const vramTotal = readSys(`${card}/device/mem_info_vram_total`)
+    if (vramUsed && vramTotal) {
+      setGpuMemUsed(String(Math.round(parseInt(vramUsed) / 1048576)))
+      setGpuMemTotal(String(Math.round(parseInt(vramTotal) / 1048576)))
+    }
+  }
   const cur = readSys(`${card}/gt_cur_freq_mhz`) || readSys(`${card}/gt_act_freq_mhz`) || ""
   const max = readSys(`${card}/gt_max_freq_mhz`) || readSys(`${card}/gt_RP0_freq_mhz`) || ""
   if (cur) setGpuFreqCur(cur.trim())

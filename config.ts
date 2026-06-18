@@ -5,7 +5,7 @@ export const projectRoot = GLib.get_current_dir()
 
 export const colors = {
   yellow: "#FFE020",
-  orange: "#EF5A29",
+  orange: "#FFE020",
   green: "#77B753",
   red: "#FF0000",
   white: "#FFFFFF",
