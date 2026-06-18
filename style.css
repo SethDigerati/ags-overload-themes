@@ -61,6 +61,11 @@ label.accent {
   color: #FFE020;
 }
 
+label.quote-author {
+  color: #FFE020;
+  font-style: italic;
+}
+
 label.green {
   color: #77B753;
 }
