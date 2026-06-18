@@ -2,7 +2,7 @@ import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { createComputed } from "ags"
 import {
-  memPerc, memUsed, memFree, memTotal, memEasyFree, memBarClass,
+  memPerc, memUsed, memFree, memTotal, memEasyFree,
   swapPerc, swapUsed, swapFree, swapMax,
   diskPerc, diskUsed, diskFree, diskTotal,
   diskReadSpeed, diskWriteSpeed,
@@ -27,18 +27,20 @@ export default function Memory() {
         <label wrap xalign={0} class="section-header" label="RAM" />
         <label ellipsize={3} maxWidthChars={50} class="gray1" xalign={1}
           label={createComputed(() => `Used: ${memUsed()} (${memPerc()}%) → ${memEasyFree()} Free / ${memTotal()}`)} />
-        <levelbar value={createComputed(() => memPerc() / 100)}
-          cssClasses={createComputed(() => [memBarClass()])} />
+        <levelbar heightRequest={10} value={createComputed(() => memPerc() / 100)}
+          cssClasses={createComputed(() => { const p = memPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
         <label wrap xalign={0} class="section-header" label="SWAP" />
         <label ellipsize={3} maxWidthChars={50} class="gray1" xalign={1}
           label={createComputed(() => `Used: ${swapUsed()} (${swapPerc()}%) → ${swapFree()} Free / ${swapMax()}`)} />
-        <levelbar value={createComputed(() => swapPerc() / 100)} />
+        <levelbar heightRequest={10} value={createComputed(() => swapPerc() / 100)}
+          cssClasses={createComputed(() => { const p = swapPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
         <label wrap xalign={0} class="section-header" label="STORAGE DEVICES" />
         <label ellipsize={3} maxWidthChars={50} class="gray3" label={createComputed(() => storageDevices() || "N/A")} />
         <label wrap xalign={0} class="section-header" label="DISK" />
         <label ellipsize={3} maxWidthChars={50} class="gray1" xalign={1}
           label={createComputed(() => `Used: ${diskUsed()} (${diskPerc()}%) → ${diskFree()} Free / ${diskTotal()}`)} />
-        <levelbar value={createComputed(() => diskPerc() / 100)} />
+        <levelbar heightRequest={10} value={createComputed(() => diskPerc() / 100)}
+          cssClasses={createComputed(() => { const p = diskPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
         <box>
           <label wrap class="gray2" label="Read:" widthRequest={60} />
           <label ellipsize={3} maxWidthChars={50} label={createComputed(() => `${diskReadSpeed()} KB/s`)} xalign={1} />

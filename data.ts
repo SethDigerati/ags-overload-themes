@@ -29,7 +29,6 @@ export const [memUsed, setMemUsed] = createState("0")
 export const [memFree, setMemFree] = createState("0")
 export const [memTotal, setMemTotal] = createState("0")
 export const [memEasyFree, setMemEasyFree] = createState("0")
-export const [memBarClass, setMemBarClass] = createState("low")
 export const [swapPerc, setSwapPerc] = createState(0)
 export const [swapUsed, setSwapUsed] = createState("0")
 export const [swapFree, setSwapFree] = createState("0")
@@ -139,7 +138,6 @@ function parseMem() {
   const perc = Math.round((used / total) * 100)
   setMemPerc(perc); setMemTotal(formatBytes(total)); setMemUsed(formatBytes(used)); setMemFree(formatBytes(free))
   setMemEasyFree(formatBytes(free + (d.SReclaimable || 0)))
-  setMemBarClass(perc > 80 ? "high" : perc > 50 ? "medium" : "low")
   if (d.SwapTotal && d.SwapTotal > 0) {
     const su = d.SwapTotal - d.SwapFree
     setSwapPerc(Math.round((su / d.SwapTotal) * 100))
