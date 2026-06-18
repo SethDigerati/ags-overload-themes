@@ -254,9 +254,9 @@ function collectSys() {
   setNodename(readSys("/proc/sys/kernel/hostname") || run("hostname").trim() || "")
   setCpuModel(run("grep 'model name' /proc/cpuinfo | head -1 | sed 's/.*: //'").trim() || "N/A")
   const f = readSys("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
-  if (f) setCpuFreq((parseInt(f) / 1000000).toFixed(1) + " GHz")
+  if (f) setCpuFreq((parseInt(f) / 1000000).toFixed(1) + "GHz")
   const mf = readSys("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
-  if (mf) setCpuMaxFreq((parseInt(mf) / 1000000).toFixed(1) + " GHz")
+  if (mf) setCpuMaxFreq((parseInt(mf) / 1000000).toFixed(1) + "GHz")
   const l = readSys("/proc/loadavg")
   if (l) setCpuLoads(l.split(" ").slice(0, 3).join(" "))
 }
