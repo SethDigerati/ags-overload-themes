@@ -53,14 +53,10 @@ export default function Memory() {
         </box>
         <levelbar heightRequest={10} value={createComputed(() => diskPerc() / 100)}
           cssClasses={createComputed(() => { const p = diskPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
-        <box>
-          <label wrap class="gray2" label="Read:" widthRequest={60} />
-          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => `${diskReadSpeed()}KB/s`)} xalign={1} />
-        </box>
-        <box>
-          <label wrap class="gray2" label="Write:" widthRequest={60} />
-          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => `${diskWriteSpeed()}KB/s`)} xalign={1} />
-        </box>
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
+          label={createComputed(() => `   Read : ${diskReadSpeed()}KB/s`)} />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
+          label={createComputed(() => `  Write : ${diskWriteSpeed()}KB/s`)} />
       </box>
     </window>
   )
