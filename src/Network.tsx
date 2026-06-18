@@ -24,33 +24,23 @@ export default function Network() {
     >
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap xalign={0} class="section-header" label={createComputed(() => `NETWORK(${netIface()})`)} />
-        <box>
-          <label wrap class="gray2" label="Status:" widthRequest={70} />
-          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netStatus())}
-            cssClasses={createComputed(() => [netStatus() === "ONLINE" ? "positive" : "negative"])} />
-        </box>
-        <box>
-          <label wrap class="gray2" label="SSID:" widthRequest={70} />
-          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netSSID())} xalign={1} />
-        </box>
-        <box>
-          <label wrap class="gray2" label="Signal:" widthRequest={70} />
-          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => `${netSignal()}%`)} xalign={1} />
-        </box>
-        <box>
-          <label wrap class="gray2" label="Local IP:" widthRequest={70} />
-          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netLocalIp())} xalign={1} />
-        </box>
-        <label ellipsize={3} maxWidthChars={50} class="gray2" label={createComputed(() => `Down: ${netDownSpeed()}KiB/s`)} xalign={1} />
-        <label ellipsize={3} maxWidthChars={50} class="gray2" label={createComputed(() => `Up: ${netUpSpeed()}KiB/s`)} xalign={1} />
-        <box>
-          <label wrap class="gray2" label="Total DL:" widthRequest={70} />
-          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netDownTotal())} xalign={1} />
-        </box>
-        <box>
-          <label wrap class="gray2" label="Total UL:" widthRequest={70} />
-          <label ellipsize={3} maxWidthChars={50} label={createComputed(() => netUpTotal())} xalign={1} />
-        </box>
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
+          label={createComputed(() => `Status  : ${netStatus()}`)}
+          cssClasses={createComputed(() => [netStatus() === "ONLINE" ? "positive" : "negative"])} />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
+          label={createComputed(() => `SSID    : ${netSSID()}`)} />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
+          label={createComputed(() => `Signal  : ${netSignal()}%`)} />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
+          label={createComputed(() => `Local IP: ${netLocalIp()}`)} />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
+          label={createComputed(() => `   Down : ${netDownSpeed()}KiB/s`)} />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
+          label={createComputed(() => `     Up : ${netUpSpeed()}KiB/s`)} />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
+          label={createComputed(() => `Total DL: ${netDownTotal()}`)} />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
+          label={createComputed(() => `Total UL: ${netUpTotal()}`)} />
       </box>
     </window>
   )
