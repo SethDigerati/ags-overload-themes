@@ -9,15 +9,22 @@ const { TOP, LEFT } = Astal.WindowAnchor
 const API_KEY = env.WEATHER_API_KEY || ""
 const ICON_DIR = `${projectRoot}/assets/icons/`
 
+const CARDINALS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
+                   "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
+const ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"]
+
 const [location, setLocation] = createState({ city: "Loading...", country: "" })
 const [latLon, setLatLon] = createState({ lat: "", lon: "" })
 const [weather, setWeather] = createState({
   temp: "N/A", tempMin: "N/A", tempMax: "N/A",
   humidity: "N/A", pressure: "N/A", description: "Unknown",
-  windSpeed: "N/A", visibility: "N/A", icon: "clearsky_day",
+  windSpeed: "N/A", windDir: "", windDirIcon: "",
+  visibility: "N/A", precipitation: "0", pop: "0",
+  icon: "clearsky_day", updateTime: "N/A",
 })
 const [forecast, setForecast] = createState<Array<{
-  date: string; temp: string; desc: string; icon: string
+  day: string; desc: string; temp: string; humidity: string;
+  wind: string; precip: string; pop: string;
 }>>([])
 
 function mapWeatherIcon(code: number, isDay: boolean): string {
@@ -77,6 +84,7 @@ async function fetchWeather() {
     if (data.cod === 200) {
       const w = data.weather[0]
       const isDay = w.icon.endsWith("d")
+      const windDeg = data.wind.deg || 0
       setWeather({
         temp: Math.round(data.main.temp).toString(),
         tempMin: Math.round(data.main.temp_min).toString(),
@@ -85,8 +93,12 @@ async function fetchWeather() {
         pressure: data.main.pressure.toString(),
         description: w.description.replace(/\b\w/g, (c: string) => c.toUpperCase()),
         windSpeed: (data.wind.speed * 3.6).toFixed(1),
+        windDir: CARDINALS[Math.round(windDeg / 22.5) % 16],
+        windDirIcon: ARROWS[Math.round(windDeg / 45) % 8],
         visibility: (data.visibility / 1000).toFixed(1),
+        precipitation: ((data.rain && (data.rain["1h"] || data.rain["3h"])) || 0).toString(),
         icon: mapWeatherIcon(w.id, isDay),
+        updateTime: new Date().toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" }),
       })
     }
   } catch (e) { console.error("weather fetch:", e) }
@@ -98,12 +110,20 @@ async function fetchForecast() {
     const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${latLon().lat}&lon=${latLon().lon}&appid=${API_KEY}&units=metric`)
     const data = await res.json()
     if (!data.list) return
+
+    const todayPop = data.list[0] ? Math.round((data.list[0].pop || 0) * 100).toString() : "0"
+    setWeather({ ...weather(), pop: todayPop })
+
     const days: Record<string, any> = {}
     for (const item of data.list) {
       const date = item.dt_txt.split(" ")[0]
-      if (!days[date]) days[date] = { tempMin: 99, tempMax: -99, count: 0, desc: "", icon: "" }
+      if (!days[date]) days[date] = { tempMin: 99, tempMax: -99, humidity: 0, wind: 0, precip: 0, pop: 0, count: 0, desc: "", icon: "" }
       days[date].tempMin = Math.min(days[date].tempMin, item.main.temp_min)
       days[date].tempMax = Math.max(days[date].tempMax, item.main.temp_max)
+      days[date].humidity += item.main.humidity
+      days[date].wind += (item.wind.speed || 0) * 3.6
+      days[date].precip += (item.rain && item.rain["3h"]) || 0
+      days[date].pop = Math.max(days[date].pop, (item.pop || 0) * 100)
       days[date].count++
       const isDay = item.weather[0].icon.endsWith("d")
       if (item.dt_txt.includes("12:00")) {
@@ -111,11 +131,14 @@ async function fetchForecast() {
         days[date].icon = mapWeatherIcon(item.weather[0].id, isDay)
       }
     }
-    setForecast(Object.entries(days).slice(0, 5).map(([date, d]) => ({
-      date: new Date(date).toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" }),
+    setForecast(Object.entries(days).slice(0, 6).map(([date, d]: [string, any]) => ({
+      day: new Date(date).toLocaleDateString("en", { weekday: "short" }),
       temp: `${Math.round(d.tempMin)}-${Math.round(d.tempMax)}`,
       desc: d.desc || "N/A",
-      icon: d.icon || "cloudy",
+      humidity: Math.round(d.humidity / d.count).toString(),
+      wind: (d.wind / d.count).toFixed(1),
+      precip: d.precip.toFixed(1),
+      pop: Math.round(d.pop).toString(),
     })))
   } catch (e) { console.error("weather forecast:", e) }
 }
@@ -128,30 +151,76 @@ export default function WeatherWidget() {
     <window visible name="weather" class="Weather" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap xalign={0} class="section-header" label="WEATHER" />
-        <label wrap class="gray1" label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} xalign={1} />
+        <box>
+          <label wrap class="gray1" hexpand xalign={0}
+            label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} />
+          <label class="gray2" label={createComputed(() => moon().name)} />
+          <label label={createComputed(() => moon().icon)} />
+        </box>
+        <label wrap xalign={0} class="section-header" label={createComputed(() => weather().description)} />
         <box>
           <image file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
-          <label wrap class="clock-large" label={createComputed(() => `${weather().temp}°C`)} xalign={0} />
-          <box orientation={Gtk.Orientation.VERTICAL} hexpand halign={Gtk.Align.END}>
-            <label wrap xalign={1} label={createComputed(() => weather().description)} />
-            <label wrap xalign={1} label={createComputed(() => `H: ${weather().tempMax}° L: ${weather().tempMin}°`)} />
+          <label class="weather-temp" label={createComputed(() => `${weather().temp}°C`)} xalign={0} marginLeft={"-30px"} />
+        </box>
+        <box orientation={Gtk.Orientation.VERTICAL} margin-start={130}>
+          <box>
+            <label class="accent" label="TEMP: " />
+            <label label={createComputed(() => `${weather().tempMin}-${weather().tempMax}°C`)} />
+          </box>
+          <box>
+            <label class="accent" label="PRECIPITATION: " />
+            <label label={createComputed(() => `${weather().precipitation} mm`)} />
+            <label class="accent" label="    ODDS: " />
+            <label label={createComputed(() => `${weather().pop}%`)} />
+          </box>
+          <box>
+            <label class="accent" label="HUMIDITY: " />
+            <label label={createComputed(() => `${weather().humidity}%`)} />
+          </box>
+          <box>
+            <label class="accent" label="PRESSURE: " />
+            <label label={createComputed(() => `${weather().pressure} hPa`)} />
+          </box>
+          <box>
+            <label class="accent" label="WINDS: " />
+            <label label={createComputed(() => `${weather().windSpeed} km/h`)} />
+            <label hexpand />
+            <label class="accent" label=" DIRECTION: " />
+            <label label={createComputed(() => `${weather().windDirIcon} ${weather().windDir}`)} />
+          </box>
+          <box>
+            <label class="accent" label="VISIBILITY: " />
+            <label label={createComputed(() => `${weather().visibility} km`)} />
           </box>
         </box>
-        <label wrap class="gray2" xalign={1}
-          label={createComputed(() => `Humidity: ${weather().humidity}% | Pressure: ${weather().pressure} hPa`)} />
-        <label wrap class="gray2" xalign={1}
-          label={createComputed(() => `Wind: ${weather().windSpeed} km/h | Vis: ${weather().visibility} km`)} />
-        <label wrap xalign={1} label={createComputed(() => { const m = moon(); return `${m.icon} ${m.name}` })} />
-        <label wrap xalign={0} class="section-header" label="5-DAY FORECAST" />
-        <For each={forecast}>
-          {(item) => (
-            <box>
-              <label wrap label={item.date} widthRequest={100} />
-              <label wrap class="gray2" label={item.desc} hexpand xalign={0} />
-              <label wrap label={`${item.temp}°C`} xalign={1} widthRequest={70} />
-            </box>
-          )}
-        </For>
+        <box orientation={Gtk.Orientation.VERTICAL}>
+          <label wrap xalign={0} class="section-header" label="5-DAY FORECAST" />
+          <box class="forecast-header">
+            <label class="accent" label="Day" widthRequest={50} xalign={0} />
+            <label class="accent" label="Weather" widthRequest={100} xalign={0} />
+            <label class="accent" label="Temp" widthRequest={55} xalign={0} />
+            <label class="accent" label="Humid" widthRequest={50} xalign={0} />
+            <label class="accent" label="Wind" widthRequest={55} xalign={0} />
+            <label class="accent" label="Prec" widthRequest={55} xalign={0} />
+            <label class="accent" label="Rain%" xalign={1} hexpand />
+          </box>
+          <box class="hr-line" />
+          <For each={forecast}>
+            {(item) => (
+              <box>
+                <label label={item.day} widthRequest={50} xalign={0} />
+                <label class="gray2" label={item.desc} widthRequest={100} xalign={0} />
+                <label label={`${item.temp}°C`} widthRequest={55} xalign={0} />
+                <label label={`${item.humidity}%`} widthRequest={50} xalign={0} />
+                <label label={`${item.wind}km/h`} widthRequest={55} xalign={0} />
+                <label label={`${item.precip}mm`} widthRequest={55} xalign={0} />
+                <label label={`${item.pop}%`} xalign={1} hexpand />
+              </box>
+            )}
+          </For>
+        </box>
+        <box class="hr-line" />
+        <label class="green" label={createComputed(() => `Last Update: ${weather().updateTime}`)} xalign={0} />
       </box>
     </window>
   )

@@ -153,4 +153,20 @@ picture {
   border-radius: 4px;
 }
 
+label.weather-temp {
+  font-size: 25pt;
+  font-weight: bold;
+  color: #FFFFFF;
+}
+
+box.hr-line {
+  min-height: 1px;
+  background: #FFFFFF;
+  margin: 4px 0;
+}
+
+box.forecast-header {
+  margin-top: 4px;
+}
+
 /*# sourceMappingURL=style.css.map */
