@@ -1,7 +1,7 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { createComputed, For } from "ags"
-import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, coreBars } from "../data"
+import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, coreRows } from "../data"
 
 const { TOP, RIGHT } = Astal.WindowAnchor
 
@@ -17,18 +17,20 @@ export default function Cpu() {
             cssClasses={createComputed(() => { const p = cpuPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
           <label wrap class="gray1" label={createComputed(() => `${cpuFreq()}/${cpuMaxFreq()}`)} xalign={1} />
         </box>
-        <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} homogeneous={true}>
-          <For each={coreBars}>{(bar) => {
-            return (
-              <box orientation={Gtk.Orientation.VERTICAL} spacing={2} halign={Gtk.Align.CENTER}>
-                <box widthRequest={22} heightRequest={22} class="cpu-gauge">
-                  <box hexpand={true} heightRequest={bar.h} valign={Gtk.Align.END}
-                    class={bar.cls === "cpu-orange" ? "cpu-yellow" : bar.cls} />
+        <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
+          <For each={coreRows}>{(row) => (
+            <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} homogeneous={true}>
+              {row.map((bar) => (
+                <box orientation={Gtk.Orientation.VERTICAL} spacing={2} halign={Gtk.Align.CENTER}>
+                  <box widthRequest={22} heightRequest={22} class="cpu-gauge">
+                    <box hexpand={true} heightRequest={bar.h} valign={Gtk.Align.END}
+                      class={bar.cls} />
+                  </box>
+                  <label wrap class="gray2" label={`CPU${bar.idx}`} xalign={0.5} />
                 </box>
-                <label wrap class="gray2" label={`CPU${bar.idx}`} xalign={0.5} />
-              </box>
-            )
-          }}</For>
+              ))}
+            </box>
+          )}</For>
         </box>
       </box>
     </window>
