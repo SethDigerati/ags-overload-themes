@@ -289,8 +289,8 @@ function updateAll() {
     setCorePercs(cores)
     setCoreBars(cores.map((c, idx) => ({
       idx,
-      h: Math.max(1, Math.round((c / 100) * 40)),
-      cls: c >= 90 ? "cpu-red" : c >= 75 ? "cpu-orange" : "cpu-white",
+      h: Math.max(1, Math.round((c / 100) * 22)),
+      cls: c >= 90 ? "cpu-red" : c >= 75 ? "cpu-yellow" : "cpu-white",
     })))
     collectSys()
     parseMem()
