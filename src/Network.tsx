@@ -24,9 +24,12 @@ export default function Network() {
     >
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
         <label wrap xalign={0} class="section-header" label={createComputed(() => `NETWORK(${netIface()})`)} />
-        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
-          label={createComputed(() => `Status  : ${netStatus()}`)}
-          cssClasses={createComputed(() => [netStatus() === "ONLINE" ? "positive" : "negative"])} />
+        <box>
+          <label class="gray2" label="Status  : " widthRequest={70} xalign={1} />
+          <label ellipsize={3} maxWidthChars={50} wrap hexpand xalign={0}
+            label={createComputed(() => netStatus())}
+            cssClasses={createComputed(() => [netStatus() === "ONLINE" ? "positive" : "negative"])} />
+        </box>
         <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
           label={createComputed(() => `SSID    : ${netSSID()}`)} />
         <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
