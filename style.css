@@ -66,15 +66,15 @@ label.green {
 }
 
 label.gray1 {
-  color: #EAEAEA;
+  color: #FFFFFF;
 }
 
 label.gray2 {
-  color: #AAAAAA;
+  color: #FFFFFF;
 }
 
 label.gray3 {
-  color: #888888;
+  color: #FFFFFF;
 }
 
 label.positive {
@@ -99,7 +99,7 @@ label.clock-large {
 }
 
 label.date-large {
-  font-size: 12pt;
+  font-size: 11pt;
   color: #EAEAEA;
 }
 
@@ -109,7 +109,7 @@ levelbar {
 }
 levelbar trough {
   background: transparent;
-  border: 1px solid #555555;
+  border: 1px solid #FFFFFF;
 }
 levelbar trough block {
   border-radius: 0;
@@ -129,7 +129,7 @@ levelbar.cpu-red trough block.filled {
 
 box.cpu-gauge {
   background: transparent;
-  border: 1px solid #555555;
+  border: 1px solid #FFFFFF;
 }
 
 box.cpu-white {
@@ -142,16 +142,6 @@ box.cpu-yellow {
 
 box.cpu-red {
   background: #FF0000;
-}
-
-graph {
-  background-color: #222222;
-  border: 1px solid #444444;
-}
-
-separator {
-  background-color: #444444;
-  min-height: 1px;
 }
 
 picture {
