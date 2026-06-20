@@ -131,7 +131,7 @@ async function fetchForecast() {
         days[date].icon = mapWeatherIcon(item.weather[0].id, isDay)
       }
     }
-    setForecast(Object.entries(days).slice(0, 6).map(([date, d]: [string, any]) => ({
+    setForecast(Object.entries(days).slice(1, 6).map(([date, d]: [string, any]) => ({
       day: new Date(date).toLocaleDateString("en", { weekday: "short" }),
       temp: `${Math.round(d.tempMin)}-${Math.round(d.tempMax)}`,
       desc: d.desc || "N/A",
