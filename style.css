@@ -154,6 +154,12 @@ picture {
   border-radius: 4px;
 }
 
+.cover-img {
+  padding: 5px;
+}
+
+
+
 label.weather-desc {
   color: #FFFFFF;
   font-size: 15pt;
