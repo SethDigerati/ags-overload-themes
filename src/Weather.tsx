@@ -199,11 +199,11 @@ export default function WeatherWidget() {
           <label wrap xalign={0} class="section-header" label="5-DAY FORECAST" />
           <box class="forecast-header">
             <label class="accent" label="Day" widthRequest={50} xalign={0} />
-            <label class="accent" label="Weather" widthRequest={100} xalign={0} />
+            <label class="accent weather-col" label="Weather" widthRequest={100} xalign={0} />
             <label class="accent" label="Temp" widthRequest={55} xalign={0} />
-            <label class="accent" label="Humid" widthRequest={50} xalign={0} />
+            <label class="accent hmd-col" label="Hmd" widthRequest={50} xalign={0} />
             <label class="accent" label="Wind" widthRequest={55} xalign={0} />
-            <label class="accent" label="Prec" widthRequest={55} xalign={0} />
+            <label class="accent prec-col" label="Prec" widthRequest={55} xalign={0} />
             <label class="accent" label="Rain%" xalign={1} hexpand />
           </box>
           <box class="hr-line" />
@@ -211,11 +211,11 @@ export default function WeatherWidget() {
             {(item) => (
               <box>
                 <label label={item.day} widthRequest={50} xalign={0} />
-                <label class="gray2" label={item.desc} widthRequest={100} xalign={0} />
+                <label class="gray2 weather-col" label={item.desc} widthRequest={100} xalign={0} />
                 <label label={`${item.temp}°C`} widthRequest={55} xalign={0} />
-                <label label={`${item.humidity}%`} widthRequest={50} xalign={0} />
+                <label class="hmd-col" label={`${item.humidity}%`} widthRequest={50} xalign={0} />
                 <label label={`${item.wind}km/h`} widthRequest={55} xalign={0} />
-                <label label={`${item.precip}mm`} widthRequest={55} xalign={0} />
+                <label class="prec-col" label={`${item.precip}mm`} widthRequest={55} xalign={0} />
                 <label label={`${item.pop}%`} xalign={1} hexpand />
               </box>
             )}

@@ -196,4 +196,16 @@ box.forecast-header {
   margin-top: 4px;
 }
 
+label.prec-col {
+  margin-left: 10px;
+}
+
+label.hmd-col {
+  margin-left: 5px;
+}
+
+label.weather-col {
+  margin-left: -10px;
+}
+
 /*# sourceMappingURL=style.css.map */
