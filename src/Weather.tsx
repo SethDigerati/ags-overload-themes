@@ -158,39 +158,41 @@ export default function WeatherWidget() {
           <label class="moon-icon" label={createComputed(() => moon().icon)} />
         </box>
         <label wrap xalign={0} class="weather-desc" label={createComputed(() => weather().description)} />
-        <box class="weather-row">
-          <image class="weather-icon" file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
-          <label class="weather-temp" label={createComputed(() => `${weather().temp}°C`)} xalign={0} />
-        </box>
-        <box orientation={Gtk.Orientation.VERTICAL} margin-start={130}>
-          <box>
-            <label class="accent" label="TEMP: " />
-            <label label={createComputed(() => `${weather().tempMin}-${weather().tempMax}°C`)} />
+        <box>
+          <box class="weather-row">
+            <image class="weather-icon" file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
+            <label class="weather-temp" label={createComputed(() => `${weather().temp}°C`)} xalign={0} />
           </box>
-          <box>
-            <label class="accent" label="PRECIPITATION: " />
-            <label label={createComputed(() => `${weather().precipitation} mm`)} />
-            <label class="accent" label="    ODDS: " />
-            <label label={createComputed(() => `${weather().pop}%`)} />
-          </box>
-          <box>
-            <label class="accent" label="HUMIDITY: " />
-            <label label={createComputed(() => `${weather().humidity}%`)} />
-          </box>
-          <box>
-            <label class="accent" label="PRESSURE: " />
-            <label label={createComputed(() => `${weather().pressure} hPa`)} />
-          </box>
-          <box>
-            <label class="accent" label="WINDS: " />
-            <label label={createComputed(() => `${weather().windSpeed} km/h`)} />
-            <label hexpand />
-            <label class="accent" label=" DIRECTION: " />
-            <label label={createComputed(() => `${weather().windDirIcon} ${weather().windDir}`)} />
-          </box>
-          <box>
-            <label class="accent" label="VISIBILITY: " />
-            <label label={createComputed(() => `${weather().visibility} km`)} />
+          <box orientation={Gtk.Orientation.VERTICAL}>
+            <box>
+              <label class="accent" label="TEMP: " />
+              <label label={createComputed(() => `${weather().tempMin}-${weather().tempMax}°C`)} />
+            </box>
+            <box>
+              <label class="accent" label="PRECIPITATION: " />
+              <label label={createComputed(() => `${weather().precipitation} mm`)} />
+              <label class="accent" label="    ODDS: " />
+              <label label={createComputed(() => `${weather().pop}%`)} />
+            </box>
+            <box>
+              <label class="accent" label="HUMIDITY: " />
+              <label label={createComputed(() => `${weather().humidity}%`)} />
+            </box>
+            <box>
+              <label class="accent" label="PRESSURE: " />
+              <label label={createComputed(() => `${weather().pressure} hPa`)} />
+            </box>
+            <box>
+              <label class="accent" label="WINDS: " />
+              <label label={createComputed(() => `${weather().windSpeed} km/h`)} />
+              <label hexpand />
+              <label class="accent" label=" DIRECTION: " />
+              <label label={createComputed(() => `${weather().windDirIcon} ${weather().windDir}`)} />
+            </box>
+            <box>
+              <label class="accent" label="VISIBILITY: " />
+              <label label={createComputed(() => `${weather().visibility} km`)} />
+            </box>
           </box>
         </box>
         <box orientation={Gtk.Orientation.VERTICAL}>
