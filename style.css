@@ -160,6 +160,15 @@ label.weather-desc {
   font-weight: bold;
 }
 
+label.moon-name {
+  font-size: 11pt;
+}
+
+label.moon-icon {
+  font-size: 15pt;
+  margin-left: 8px;
+}
+
 image.weather-icon {
   margin-left: -12px;
 }
