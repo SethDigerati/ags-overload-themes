@@ -72,16 +72,16 @@ export default function LastFmWidget() {
     <window visible name="lastfm" class="LastFm" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="LAST.FM" />
-        <label ellipsize={3} maxWidthChars={40} wrap class="accent" label={createComputed(() => nowPlaying())} xalign={1} />
+        <label ellipsize={3} maxWidthChars={40} wrap class="accent" label={createComputed(() => nowPlaying())} xalign={0} />
         <For each={tracks}>
           {(item, idx) => (
             <box>
               {item.image ? (
-                <image file={item.image} pixelSize={80} />
+                <image class="cover-img" file={item.image} pixelSize={idx.peek() === 0 ? 100 : 80} />
               ) : (
-                <box widthRequest={80} heightRequest={80} />
+                <box class="cover-img" widthRequest={idx.peek() === 0 ? 100 : 80} heightRequest={idx.peek() === 0 ? 100 : 80} />
               )}
-              <box orientation={Gtk.Orientation.VERTICAL} hexpand>
+              <box class="track-details" orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
                 <label wrap maxWidthChars={40} class="gray2" label={`Track: ${item.track}`} xalign={0} />
                 <label wrap maxWidthChars={40} class="gray3" label={`Artist: ${item.artist}`} xalign={0} />
                 <label wrap maxWidthChars={40} class="gray3" label={`Album: ${item.album}`} xalign={0} />
