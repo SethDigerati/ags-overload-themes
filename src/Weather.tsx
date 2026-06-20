@@ -160,7 +160,7 @@ export default function WeatherWidget() {
         <label wrap xalign={0} class="section-header" label={createComputed(() => weather().description)} />
         <box>
           <image file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
-          <label class="weather-temp" label={createComputed(() => `${weather().temp}°C`)} xalign={0} marginLeft={"-30px"} />
+          <label class="weather-temp" label={createComputed(() => `${weather().temp}°C`)} xalign={0} />
         </box>
         <box orientation={Gtk.Orientation.VERTICAL} margin-start={130}>
           <box>

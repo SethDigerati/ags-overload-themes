@@ -157,6 +157,7 @@ label.weather-temp {
   font-size: 25pt;
   font-weight: bold;
   color: #FFFFFF;
+  margin-left: -30px;
 }
 
 box.hr-line {
