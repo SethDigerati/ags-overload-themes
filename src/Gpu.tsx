@@ -15,11 +15,12 @@ export default function Gpu() {
       class="Gpu"
       anchor={TOP | RIGHT}
       marginRight={0}
-      widthRequest={400}
+      widthRequest={399}
       exclusivity={Astal.Exclusivity.NORMAL}
       application={app}
+      resizable={false}
     >
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label={createComputed(() => `GPU (${gpuTemp()}°C)`)} />
         <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
           label={createComputed(() => `Model  : ${gpuModel()}`)} />

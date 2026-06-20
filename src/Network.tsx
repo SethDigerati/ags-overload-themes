@@ -18,11 +18,12 @@ export default function Network() {
       anchor={TOP | LEFT}
       marginTop={10}
       marginLeft={0}
-      widthRequest={400}
+      widthRequest={399}
       exclusivity={Astal.Exclusivity.NORMAL}
       application={app}
+      resizable={false}
     >
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label={createComputed(() => `NETWORK(${netIface()})`)} />
         <box>
           <label class="gray2" label="Status  : " widthRequest={70} xalign={1} />

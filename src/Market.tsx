@@ -57,8 +57,8 @@ function Cell({ val }: { val: string }) {
 
 export default function MarketWidget() {
   return (
-    <window visible name="market" class="Market" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
+    <window visible name="market" class="Market" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="MARKET" />
         <box>
           <label wrap label="ASSET" widthRequest={50} />
@@ -69,14 +69,14 @@ export default function MarketWidget() {
         <For each={assets}>
           {(item) => (
             <box>
-              <label wrap xalign={0} class="section-header" label={item.name} widthRequest={50} />
+              <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="section-header" label={item.name} widthRequest={50} />
               <Cell val={item.pct1h} />
               <Cell val={item.pct1d} />
               <Cell val={item.pct1w} />
             </box>
           )}
         </For>
-        <label wrap class="gray3" label={createComputed(() => forex())} xalign={1} />
+        <label ellipsize={3} maxWidthChars={15} wrap class="gray3" label={createComputed(() => forex())} xalign={1} />
       </box>
     </window>
   )

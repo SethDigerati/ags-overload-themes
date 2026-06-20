@@ -69,10 +69,10 @@ fetchLastfm().catch((e) => console.error("lastfm init:", e))
 
 export default function LastFmWidget() {
   return (
-    <window visible name="lastfm" class="LastFm" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
+    <window visible name="lastfm" class="LastFm" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="LAST.FM" />
-        <label wrap class="accent" label={createComputed(() => nowPlaying())} xalign={1} />
+        <label ellipsize={3} maxWidthChars={40} wrap class="accent" label={createComputed(() => nowPlaying())} xalign={1} />
         <For each={tracks}>
           {(item, idx) => (
             <box>
@@ -86,7 +86,7 @@ export default function LastFmWidget() {
                 <label wrap maxWidthChars={40} class="gray3" label={`Artist: ${item.artist}`} xalign={0} />
                 <label wrap maxWidthChars={40} class="gray3" label={`Album: ${item.album}`} xalign={0} />
                 {idx.peek() === 0 && (
-                  <label wrap class="gray3" label={`Duration: ${item.duration} | Plays: ${item.playcount}`} xalign={0} />
+                  <label ellipsize={3} maxWidthChars={40} wrap class="gray3" label={`Duration: ${item.duration} | Plays: ${item.playcount}`} xalign={0} />
                 )}
               </box>
             </box>

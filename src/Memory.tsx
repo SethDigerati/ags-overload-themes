@@ -19,11 +19,12 @@ export default function Memory() {
       class="Memory"
       anchor={TOP | RIGHT}
       marginRight={0}
-      widthRequest={400}
+      widthRequest={399}
       exclusivity={Astal.Exclusivity.NORMAL}
       application={app}
+      resizable={false}
     >
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="RAM" />
         <box>
           <label ellipsize={3} maxWidthChars={30} class="gray1" xalign={0} hexpand

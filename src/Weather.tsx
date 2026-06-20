@@ -148,16 +148,16 @@ fetchLocation().then(() => { fetchWeather(); fetchForecast() }).catch((e) => con
 
 export default function WeatherWidget() {
   return (
-    <window visible name="weather" class="Weather" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
+    <window visible name="weather" class="Weather" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="WEATHER" />
         <box>
-          <label wrap class="gray1" hexpand xalign={0}
+          <label ellipsize={3} maxWidthChars={30} wrap class="gray1" hexpand xalign={0}
             label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} />
           <label class="gray2 moon-name" label={createComputed(() => moon().name)} />
           <label class="moon-icon" label={createComputed(() => moon().icon)} />
         </box>
-        <label wrap xalign={0} class="weather-desc" label={createComputed(() => weather().description)} />
+        <label ellipsize={3} maxWidthChars={40} wrap xalign={0} class="weather-desc" label={createComputed(() => weather().description)} />
         <box>
           <box class="weather-row">
             <image class="weather-icon" file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
@@ -170,8 +170,8 @@ export default function WeatherWidget() {
             </box>
             <box>
               <label class="accent" label="PRECIPITATION: " />
-              <label label={createComputed(() => `${weather().precipitation} mm`)} />
-              <label class="accent" label="    ODDS: " />
+              <label hexpand label={createComputed(() => `${weather().precipitation} mm`)} />
+              <label class="accent" label="ODDS: " />
               <label label={createComputed(() => `${weather().pop}%`)} />
             </box>
             <box>
@@ -186,7 +186,7 @@ export default function WeatherWidget() {
               <label class="accent" label="WINDS: " />
               <label label={createComputed(() => `${weather().windSpeed} km/h`)} />
               <label hexpand />
-              <label class="accent" label=" DIRECTION: " />
+              <label class="accent" label="DIRECTION: " />
               <label label={createComputed(() => `${weather().windDirIcon} ${weather().windDir}`)} />
             </box>
             <box>

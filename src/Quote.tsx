@@ -47,8 +47,8 @@ fetchQuote().catch((e) => console.error("quote init:", e))
 
 export default function QuoteWidget() {
   return (
-    <window visible name="quote" class="Quote" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
+    <window visible name="quote" class="Quote" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="QUOTE" />
         <box>
           <label wrap maxWidthChars={40} class="gray1" label={createComputed(() => quote().text)} xalign={0} hexpand valign={Gtk.Align.CENTER} />
