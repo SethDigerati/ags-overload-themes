@@ -154,8 +154,8 @@ export default function WeatherWidget() {
         <box>
           <label wrap class="gray1" hexpand xalign={0}
             label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} />
-          <label class="gray2" label={createComputed(() => moon().name)} />
-          <label label={createComputed(() => moon().icon)} />
+          <label class="gray2 moon-name" label={createComputed(() => moon().name)} />
+          <label class="moon-icon" label={createComputed(() => moon().icon)} />
         </box>
         <label wrap xalign={0} class="weather-desc" label={createComputed(() => weather().description)} />
         <box class="weather-row">
