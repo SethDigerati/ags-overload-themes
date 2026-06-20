@@ -7,7 +7,7 @@ import {
   netLocalIp, netLatency, netLoss, netJitter,
 } from "../data"
 
-const { TOP, LEFT } = Astal.WindowAnchor
+const { TOP, RIGHT } = Astal.WindowAnchor
 
 export default function Network() {
   return (
@@ -15,7 +15,7 @@ export default function Network() {
       visible
       name="network"
       class="Network"
-      anchor={TOP | LEFT}
+      anchor={TOP | RIGHT}
       marginTop={10}
       marginLeft={0}
       widthRequest={399}
