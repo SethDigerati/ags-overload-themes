@@ -7,10 +7,10 @@ const { TOP, RIGHT } = Astal.WindowAnchor
 
 export default function Cpu() {
   return (
-    <window visible name="cpu" class="Cpu" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={400}>
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={400}>
+    <window visible name="cpu" class="Cpu" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label={createComputed(() => `CPU (${cpuTemp()}°C)`)} />
-        <label wrap class="gray1" label={createComputed(() => cpuModel())} xalign={0} />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray1" label={createComputed(() => cpuModel())} xalign={0} />
         <box spacing={2}>
           <label wrap label={createComputed(() => `${cpuPerc()}%`)} xalign={0} />
           <levelbar widthRequest={250} heightRequest={10} valign={Gtk.Align.CENTER} halign={Gtk.Align.CENTER} value={cpuPercNorm}
