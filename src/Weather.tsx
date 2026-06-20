@@ -157,9 +157,9 @@ export default function WeatherWidget() {
           <label class="gray2" label={createComputed(() => moon().name)} />
           <label label={createComputed(() => moon().icon)} />
         </box>
-        <label wrap xalign={0} class="section-header" label={createComputed(() => weather().description)} />
-        <box>
-          <image file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
+        <label wrap xalign={0} class="weather-desc" label={createComputed(() => weather().description)} />
+        <box class="weather-row">
+          <image class="weather-icon" file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
           <label class="weather-temp" label={createComputed(() => `${weather().temp}°C`)} xalign={0} />
         </box>
         <box orientation={Gtk.Orientation.VERTICAL} margin-start={130}>

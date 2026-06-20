@@ -154,11 +154,26 @@ picture {
   border-radius: 4px;
 }
 
+label.weather-desc {
+  color: #FFFFFF;
+  font-size: 15pt;
+  font-weight: bold;
+}
+
+image.weather-icon {
+  margin-left: -12px;
+}
+
+box.weather-row {
+  margin-top: -30px;
+}
+
 label.weather-temp {
   font-size: 25pt;
   font-weight: bold;
   color: #FFFFFF;
-  margin-left: -30px;
+  margin-left: -35px;
+  margin-top: 80px;
 }
 
 box.hr-line {
