@@ -15,60 +15,79 @@ const [nowPlaying, setNowPlaying] = createState("Not Playing")
 const [tracks, setTracks] = createState<Array<{
   artist: string; track: string; album: string;
   duration: string; playcount: string; artistPlaycount: string; image: string;
+  isNowPlaying: boolean;
 }>>([])
 
 async function fetchLastfm() {
   if (!API_KEY || !USERNAME) return
   try {
     const res = await fetch(
-      `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=3`
+      `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${USERNAME}&api_key=${API_KEY}&format=json&limit=4`
     )
     const data = await res.json()
     if (!data?.recenttracks?.track) return
     const items = Array.isArray(data.recenttracks.track) ? data.recenttracks.track : [data.recenttracks.track]
-    setNowPlaying(items[0]?.["@attr"]?.nowplaying === "true" ? "▶ Playing" : "⏸ Paused")
-    const result: Array<{ artist: string; track: string; album: string; duration: string; playcount: string; artistPlaycount: string; image: string }> = []
-    for (let i = 0; i < Math.min(3, items.length); i++) {
+    const ts = Date.now()
+    const all: Array<{ artist: string; track: string; album: string; duration: string; playcount: string; artistPlaycount: string; image: string; isNowPlaying: boolean }> = []
+    for (let i = 0; i < Math.min(4, items.length); i++) {
       const t = items[i]
-      const img = t.image?.find((img: any) => img.size === "extralarge")?.["#text"] || ""
-      if (img) {
+      const imgUrl = t.image?.find((img: any) => img.size === "extralarge")?.["#text"] || ""
+      let imgPath = ""
+      if (imgUrl) {
         try {
-          const imgRes = await fetch(img)
+          const imgRes = await fetch(imgUrl)
           const imgBytes = await imgRes.bytes()
-          if (imgBytes) writeFile(`${DATA_DIR}/cover${i}.jpg`, imgBytes.toArray())
+          if (imgBytes) {
+            imgPath = `${DATA_DIR}/cover_${ts}_${i}.jpg`
+            writeFile(imgPath, imgBytes.toArray())
+          }
         } catch (e) { console.error("lastfm image download:", e) }
       }
-      result.push({
+      all.push({
         artist: t.artist?.["#text"] || "Unknown",
         track: t.name || "Unknown",
         album: t.album?.["#text"] || "Unknown",
         duration: "-",
         playcount: "-",
         artistPlaycount: "-",
-        image: img ? `${DATA_DIR}/cover${i}.jpg` : "",
+        image: imgPath,
+        isNowPlaying: t["@attr"]?.nowplaying === "true",
       })
     }
-    for (let i = 0; i < result.length; i++) {
+    // Separate nowplaying from scrobbles
+    const nowPlayingTrack = all.find(t => t.isNowPlaying)
+    const scrobbles = all.filter(t => !t.isNowPlaying)
+    // Build display: nowplaying first if active, then scrobbles (max 3)
+    const display: typeof all = []
+    if (nowPlayingTrack) display.push(nowPlayingTrack)
+    for (const s of scrobbles) {
+      if (display.length >= 3) break
+      // Skip scrobbles that match the nowplaying track (already featured)
+      if (nowPlayingTrack && `${s.artist}|${s.track}` === `${nowPlayingTrack.artist}|${nowPlayingTrack.track}`) continue
+      display.push(s)
+    }
+    setNowPlaying(nowPlayingTrack ? "▶ Playing" : "⏸ Paused")
+    for (let i = 0; i < display.length; i++) {
       try {
         const info = await fetch(
-          `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(result[i].artist)}&track=${encodeURIComponent(result[i].track)}&api_key=${API_KEY}&format=json`
+          `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(display[i].artist)}&track=${encodeURIComponent(display[i].track)}&api_key=${API_KEY}&format=json`
         )
         const infoData = await info.json()
         if (infoData?.track?.duration) {
           const secs = Math.floor(parseInt(infoData.track.duration) / 1000)
-          result[i].duration = `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, "0")}`
+          display[i].duration = `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, "0")}`
         }
-        if (infoData?.track?.userplaycount) result[i].playcount = infoData.track.userplaycount
+        if (infoData?.track?.userplaycount) display[i].playcount = infoData.track.userplaycount
       } catch (e) { console.error("lastfm track info:", e) }
       try {
         const artistInfo = await fetch(
-          `https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(result[i].artist)}&user=${USERNAME}&api_key=${API_KEY}&format=json`
+          `https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(display[i].artist)}&user=${USERNAME}&api_key=${API_KEY}&format=json`
         )
         const artistData = await artistInfo.json()
-        if (artistData?.artist?.stats?.userplaycount) result[i].artistPlaycount = artistData.artist.stats.userplaycount
+        if (artistData?.artist?.stats?.userplaycount) display[i].artistPlaycount = artistData.artist.stats.userplaycount
       } catch (e) { console.error("lastfm artist info:", e) }
     }
-    setTracks(result)
+    setTracks(display)
   } catch (e) { console.error("lastfm fetch:", e) }
 }
 
