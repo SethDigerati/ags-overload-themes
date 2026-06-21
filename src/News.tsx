@@ -7,6 +7,7 @@ import { env } from "../config"
 
 const { BOTTOM, LEFT } = Astal.WindowAnchor
 const API_KEY = env.NEWS_API_KEY || ""
+const API_SOURCE = "FreeNewsApi.io"
 
 type Article = { title: string; source: string; publishedAt: string }
 const [newsData, setNewsData] = createState<Record<string, Article[]>>({
@@ -87,7 +88,7 @@ export default function NewsWidget() {
     <window visible name="news" class="News" anchor={BOTTOM | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="NEWS" />
-        <label wrap class="gray3" label="SOURCE: FreeNewsApi.io" xalign={1} />
+        <label wrap class="gray3" label={`SOURCE: ${API_SOURCE}`} xalign={0} />
         <For each={items}>
           {(item) =>
             item.type === "header"
