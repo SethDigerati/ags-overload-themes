@@ -21,7 +21,7 @@ window.Quote {
 }
 
 window.Gpu {
-  margin-top: 850px;
+  margin-top: 870px;
 }
 
 window.Memory {
@@ -29,7 +29,7 @@ window.Memory {
 }
 
 window.Network {
-  margin-top: 670px;
+  margin-top: 680px;
 }
 
 window.Weather {
@@ -37,11 +37,11 @@ window.Weather {
 }
 
 window.LastFm {
-  margin-top: 340px;
+  margin-top: 350px;
 }
 
 window.Market {
-  margin-top: 650px;
+  margin-top: 660px;
 }
 
 window.News {
