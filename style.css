@@ -85,10 +85,12 @@ label.gray3 {
 
 label.positive {
   color: #77B753;
+  font-weight: bold;
 }
 
 label.negative {
   color: #FF0000;
+  font-weight: bold;
 }
 
 label.weekday {
@@ -127,7 +129,7 @@ levelbar.cpu-white trough block.filled {
   background: #FFFFFF;
 }
 levelbar.cpu-yellow trough block.filled {
-  background: #D1BB17;
+  background: #E3C30D;
 }
 levelbar.cpu-red trough block.filled {
   background: #FF0000;
@@ -143,7 +145,7 @@ box.cpu-white {
 }
 
 box.cpu-yellow {
-  background: #D1BB17;
+  background: #E3C30D;
 }
 
 box.cpu-red {
