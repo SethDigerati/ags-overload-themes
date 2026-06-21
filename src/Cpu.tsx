@@ -22,7 +22,7 @@ export default function Cpu() {
             <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} homogeneous={true}>
               {row.map((bar) => (
                 <box orientation={Gtk.Orientation.VERTICAL} spacing={2} halign={Gtk.Align.CENTER}>
-                  <box widthRequest={22} heightRequest={22} class="cpu-gauge">
+                  <box widthRequest={22} heightRequest={22} class="cpu-gauge" overflow={Gtk.Overflow.HIDDEN}>
                     <box hexpand={true} heightRequest={bar.h} valign={Gtk.Align.END}
                       class={bar.cls} />
                   </box>
