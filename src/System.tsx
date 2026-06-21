@@ -17,7 +17,7 @@ export default function System() {
         <label wrap xalign={0} class="section-header" label="SYSTEM" />
         <box>
           <label ellipsize={3} maxWidthChars={7} wrap class="weekday" label={weekday} xalign={0} />
-          <label wrap class="clock-large" label={timeStr} xalign={1} hexpand />
+          <label wrap ellipsize={3} maxWidthChars={8} class="clock-large" label={timeStr} xalign={1} hexpand />
         </box>
         <box>
           <label ellipsize={3} maxWidthChars={25} wrap class="date-large" label={dateStr} xalign={0} />

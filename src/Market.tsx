@@ -99,12 +99,12 @@ async function fetchMarket() {
     }
     const eurRate = data.rates.EUR
     if (eurRate) {
-      if (parts.length > 0) parts.push("  |  ")
+      if (parts.length > 0) parts.push(" | ")
       parts.push(`1 USD = ${eurRate.toFixed(2)} ${currencySymbols.EUR || "EUR"}`)
     }
     const jpyRate = data.rates.JPY
     if (jpyRate) {
-      if (parts.length > 0) parts.push("  |  ")
+      if (parts.length > 0) parts.push(" | ")
       parts.push(`1 USD = ${jpyRate.toFixed(2)} ${currencySymbols.JPY || "JPY"}`)
     }
     setForex(parts.length > 0 ? parts.join("") : "...")
@@ -119,19 +119,19 @@ function Cell({ val }: { val: string }) {
   if (n > 0) return (
     <box widthRequest={60} spacing={0}>
       <label wrap class="positive" label="▲" xalign={0} widthRequest={12} />
-      <label wrap class="gray2" label={`${val}%`} xalign={0} />
+      <label wrap ellipsize={3} maxWidthChars={6} class="gray2" label={`${val}%`} xalign={0} />
     </box>
   )
   if (n < 0) return (
     <box widthRequest={60} spacing={0}>
       <label wrap class="negative" label="▼" xalign={0} widthRequest={12} />
-      <label wrap class="gray2" label={`${Math.abs(n).toFixed(1)}%`} xalign={0} />
+      <label wrap ellipsize={3} maxWidthChars={6} class="gray2" label={`${Math.abs(n).toFixed(1)}%`} xalign={0} />
     </box>
   )
   return (
     <box widthRequest={60} spacing={0}>
       <label wrap class="gray2" label="─" xalign={0} widthRequest={12} />
-      <label wrap class="gray2" label="0.0%" xalign={0} />
+      <label wrap ellipsize={3} maxWidthChars={5} class="gray2" label="0.0%" xalign={0} />
     </box>
   )
 }

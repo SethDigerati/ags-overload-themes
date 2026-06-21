@@ -7,6 +7,9 @@ import {
 } from "../data"
 const { TOP, RIGHT } = Astal.WindowAnchor
 
+const gpuLabels = ["Model : ", "Type : ", "Driver : ", "Memory : ", "Frequency : "]
+const gpuFieldWidth = Math.max(...gpuLabels.map(l => l.length)) * 7 + 10
+
 export default function Gpu() {
   return (
     <window
@@ -20,18 +23,35 @@ export default function Gpu() {
       application={app}
       resizable={false}
     >
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-        <label wrap xalign={0} class="section-header" label={createComputed(() => `GPU (${gpuTemp()}°C)`)} />
-        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
-          label={createComputed(() => `Model  : ${gpuModel()}`)} />
-        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
-          label={createComputed(() => `Type   : ${gpuType()}`)} />
-        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
-          label={createComputed(() => `Driver : ${gpuDriver()}`)} />
-        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
-          label={createComputed(() => `Memory : ${gpuMemUsed() === "N/A" ? `${gpuMemTotal()} (shared)` : `${gpuMemUsed()}/${gpuMemTotal()} MiB`}`)} />
-        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
-          label={createComputed(() => `Freq   : ${gpuFreqCur()}/${gpuFreqMax()} MHz`)} />
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399} overflow={Gtk.Overflow.HIDDEN}>
+        <label wrap xalign={0} ellipsize={3} maxWidthChars={50} class="section-header" label={createComputed(() => `GPU (${gpuTemp()}°C)`)} />
+        <box>
+          <label class="accent" xalign={1} widthRequest={gpuFieldWidth} label="Model : " />
+          <box widthRequest={250}>
+            <label ellipsize={3} wrap maxWidthChars={35} class="gray2" xalign={0} hexpand
+              label={createComputed(() => gpuModel())} />
+          </box>
+        </box>
+        <box>
+          <label class="accent" xalign={1} widthRequest={gpuFieldWidth} label="Type : " />
+          <label ellipsize={3} maxWidthChars={50} class="gray2" xalign={0} hexpand
+            label={createComputed(() => gpuType())} />
+        </box>
+        <box>
+          <label class="accent" xalign={1} widthRequest={gpuFieldWidth} label="Driver : " />
+          <label ellipsize={3} maxWidthChars={50} class="gray2" xalign={0} hexpand
+            label={createComputed(() => gpuDriver())} />
+        </box>
+        <box>
+          <label class="accent" xalign={1} widthRequest={gpuFieldWidth} label="Memory : " />
+          <label ellipsize={3} maxWidthChars={50} class="gray2" xalign={0} hexpand
+            label={createComputed(() => gpuMemUsed() === "N/A" ? `${gpuMemTotal()} (shared)` : `${gpuMemUsed()}/${gpuMemTotal()} MiB`)} />
+        </box>
+        <box>
+          <label class="accent" xalign={1} widthRequest={gpuFieldWidth} label="Frequency : " />
+          <label ellipsize={3} maxWidthChars={50} class="gray2" xalign={0} hexpand
+            label={createComputed(() => `${gpuFreqCur()}/${gpuFreqMax()} MHz`)} />
+        </box>
       </box>
     </window>
   )

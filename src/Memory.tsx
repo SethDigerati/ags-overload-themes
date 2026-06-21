@@ -7,6 +7,7 @@ import {
   diskPerc, diskUsed, diskFree, diskTotal,
   diskReadSpeed, diskWriteSpeed,
   storageDevices,
+  formatSpeed,
 } from "../data"
 
 const { TOP, RIGHT } = Astal.WindowAnchor
@@ -27,37 +28,46 @@ export default function Memory() {
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="RAM" />
         <box>
+          <label class="gray1" xalign={0} label="Used: " />
           <label ellipsize={3} maxWidthChars={30} class="gray1" xalign={0} hexpand
-            label={createComputed(() => `Used: ${memUsed()} (${memPerc()}%)`)} />
+            label={createComputed(() => `${memUsed()} (${memPerc()}%)`)} />
           <label ellipsize={3} maxWidthChars={25} class="gray1" xalign={1}
             label={createComputed(() => `${memEasyFree()} Free / ${memTotal()}`)} />
         </box>
-        <levelbar heightRequest={10} value={createComputed(() => memPerc() / 100)}
+        <levelbar hexpand heightRequest={10} value={createComputed(() => memPerc() / 100)}
           cssClasses={createComputed(() => { const p = memPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
         <label wrap xalign={0} class="section-header" label="SWAP" />
         <box>
+          <label class="gray1" xalign={0} label="Used: " />
           <label ellipsize={3} maxWidthChars={30} class="gray1" xalign={0} hexpand
-            label={createComputed(() => `Used: ${swapUsed()} (${swapPerc()}%)`)} />
+            label={createComputed(() => `${swapUsed()} (${swapPerc()}%)`)} />
           <label ellipsize={3} maxWidthChars={25} class="gray1" xalign={1}
             label={createComputed(() => `${swapFree()} Free / ${swapMax()}`)} />
         </box>
-        <levelbar heightRequest={10} value={createComputed(() => swapPerc() / 100)}
+        <levelbar hexpand heightRequest={10} value={createComputed(() => swapPerc() / 100)}
           cssClasses={createComputed(() => { const p = swapPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
         <label wrap xalign={0} class="section-header" label="STORAGE DEVICES" />
-        <label xalign={0} class="gray3" label={createComputed(() => storageDevices() || "N/A")} />
+        <label xalign={0} ellipsize={3} maxWidthChars={55} class="gray3" label={createComputed(() => storageDevices() || "N/A")} />
         <label wrap xalign={0} class="section-header" label="DISK" />
         <box>
+          <label class="gray1" xalign={0} label="Used: " />
           <label ellipsize={3} maxWidthChars={30} class="gray1" xalign={0} hexpand
-            label={createComputed(() => `Used: ${diskUsed()} (${diskPerc()}%)`)} />
+            label={createComputed(() => `${diskUsed()} (${diskPerc()}%)`)} />
           <label ellipsize={3} maxWidthChars={25} class="gray1" xalign={1}
             label={createComputed(() => `${diskFree()} Free / ${diskTotal()}`)} />
         </box>
-        <levelbar heightRequest={10} value={createComputed(() => diskPerc() / 100)}
+        <levelbar hexpand heightRequest={10} value={createComputed(() => diskPerc() / 100)}
           cssClasses={createComputed(() => { const p = diskPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
-        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
-          label={createComputed(() => `   Read : ${diskReadSpeed()}KB/s`)} />
-        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0}
-          label={createComputed(() => `  Write : ${diskWriteSpeed()}KB/s`)} />
+        <box>
+          <label class="accent" xalign={1} widthRequest={70} label="Read : " />
+          <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
+            label={createComputed(() => formatSpeed(diskReadSpeed()))} />
+        </box>
+        <box>
+          <label class="accent" xalign={1} widthRequest={70} label="Write : " />
+          <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
+            label={createComputed(() => formatSpeed(diskWriteSpeed()))} />
+        </box>
       </box>
     </window>
   )
