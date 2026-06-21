@@ -1,6 +1,6 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
-import { createState, createComputed } from "ags"
+import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
 import { env } from "../config"
@@ -13,16 +13,18 @@ const [newsData, setNewsData] = createState<Record<string, Article[]>>({
   tech: [], science: [], space: [], climate: [],
 })
 
-const newsText = createComputed(() => {
+const sections = createComputed(() => {
   const d = newsData()
-  let text = ""
   const labels: Record<string, string> = { tech: "TECH", science: "SCIENCE", space: "SPACE", climate: "CLIMATE" }
+  const result: { label: string; text: string }[] = []
   for (const [cat, articles] of Object.entries(d)) {
-    text += `── ${labels[cat] || cat} ──\n`
-    for (const a of articles) text += `${a.source}: ${a.title}\n`
-    text += "\n"
+    if (!articles.length) continue
+    result.push({
+      label: `── ${labels[cat] || cat} ──`,
+      text: articles.map(a => `${a.source}: ${a.title}`).join("\n"),
+    })
   }
-  return text
+  return result
 })
 
 const categoryMap: Record<string, string> = {
@@ -73,7 +75,14 @@ export default function NewsWidget() {
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="NEWS" />
         <label wrap class="gray3" label="SOURCE: FreeNewsApi.io" xalign={1} />
-        <label wrap maxWidthChars={50} class="gray1" label={newsText} xalign={0} />
+        <For each={sections}>
+          {(sec) =>
+            <box orientation={Gtk.Orientation.VERTICAL}>
+              <label wrap class="accent" xalign={0.5} label={sec.label} />
+              <label wrap maxWidthChars={50} class="gray1" xalign={0} label={sec.text} />
+            </box>
+          }
+        </For>
       </box>
     </window>
   )
