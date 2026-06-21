@@ -94,8 +94,9 @@ export default function NewsWidget() {
               ? <label wrap class="accent" xalign={0.5} label={item.label} />
               : <box orientation={Gtk.Orientation.VERTICAL}>
                   <box>
-                    <label hexpand xalign={0} maxWidthChars={50} useMarkup class="gray1" label={`<b>[${esc(item.source)}]</b>`} />
-                    <label class="gray3" label={item.time} />
+                    <label xalign={0} maxWidthChars={50} useMarkup class="gray1" label={`<b>[${esc(item.source)}]</b>`} />
+                    <box hexpand valign={Gtk.Align.CENTER} class="hr-inline" />
+                    <label class="gray3" label={`[${item.time}]`} />
                   </box>
                   <label wrap maxWidthChars={50} class="gray1" xalign={0} label={item.title} />
                 </box>
