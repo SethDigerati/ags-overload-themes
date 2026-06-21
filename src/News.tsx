@@ -13,6 +13,10 @@ const [newsData, setNewsData] = createState<Record<string, Article[]>>({
   tech: [], science: [], space: [], climate: [],
 })
 
+function esc(s: string) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;")
+}
+
 function fmtTime(iso: string): string {
   if (!iso) return ""
   const d = new Date(iso.replace(" ", "T"))
@@ -89,7 +93,10 @@ export default function NewsWidget() {
             item.type === "header"
               ? <label wrap class="accent" xalign={0.5} label={item.label} />
               : <box orientation={Gtk.Orientation.VERTICAL}>
-                  <label xalign={0} maxWidthChars={50} class="gray1" label={item.source} />
+                  <box>
+                    <label hexpand xalign={0} maxWidthChars={50} useMarkup class="gray1" label={`<b>[${esc(item.source)}]</b>`} />
+                    <label class="gray3" label={item.time} />
+                  </box>
                   <label wrap maxWidthChars={50} class="gray1" xalign={0} label={item.title} />
                 </box>
           }
