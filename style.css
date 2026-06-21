@@ -127,7 +127,7 @@ levelbar.cpu-white trough block.filled {
   background: #FFFFFF;
 }
 levelbar.cpu-yellow trough block.filled {
-  background: #FFE020;
+  background: #D1BB17;
 }
 levelbar.cpu-red trough block.filled {
   background: #FF0000;
@@ -143,7 +143,7 @@ box.cpu-white {
 }
 
 box.cpu-yellow {
-  background: #FFE020;
+  background: #D1BB17;
 }
 
 box.cpu-red {

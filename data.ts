@@ -305,7 +305,7 @@ function updateAll() {
     setCorePercs(cores)
     const bars = cores.map((c, idx) => ({
       idx,
-      h: Math.max(1, Math.round((c / 100) * 22)),
+      h: Math.max(1, Math.round((c / 100) * 20)),
       cls: c >= 85 ? "cpu-yellow" : "cpu-white",
     }))
     setCoreBars(bars)
