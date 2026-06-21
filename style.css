@@ -198,6 +198,12 @@ box.hr-line {
   margin: 2px 0;
 }
 
+box.hr-inline {
+  min-height: 1px;
+  background: #FFFFFF;
+  margin: 0;
+}
+
 box.forecast-header {
   margin-top: 4px;
 }
