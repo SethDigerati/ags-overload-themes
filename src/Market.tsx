@@ -53,18 +53,23 @@ fetchMarket().catch((e) => console.error("market init:", e))
 function Cell({ val }: { val: string }) {
   const n = parseFloat(val)
   if (n > 0) return (
-    <box widthRequest={60}>
-      <label wrap class="positive" label="▲" xalign={0} />
-      <label wrap class="gray2" label={`${val}%`} xalign={1} hexpand />
+    <box widthRequest={60} spacing={0}>
+      <label wrap class="positive" label="▲" xalign={0} widthRequest={12} />
+      <label wrap class="gray2" label={`${val}%`} xalign={0} />
     </box>
   )
   if (n < 0) return (
-    <box widthRequest={60}>
-      <label wrap class="negative" label="▼" xalign={0} />
-      <label wrap class="gray2" label={`${Math.abs(n).toFixed(1)}%`} xalign={1} hexpand />
+    <box widthRequest={60} spacing={0}>
+      <label wrap class="negative" label="▼" xalign={0} widthRequest={12} />
+      <label wrap class="gray2" label={`${Math.abs(n).toFixed(1)}%`} xalign={0} />
     </box>
   )
-  return <label widthRequest={60} wrap class="gray2" label="─0.0%" xalign={1} />
+  return (
+    <box widthRequest={60} spacing={0}>
+      <label wrap class="gray2" label="─" xalign={0} widthRequest={12} />
+      <label wrap class="gray2" label="0.0%" xalign={0} />
+    </box>
+  )
 }
 
 export default function MarketWidget() {
@@ -72,19 +77,34 @@ export default function MarketWidget() {
     <window visible name="market" class="Market" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="MARKET" />
-        <box class="market-table" orientation={Gtk.Orientation.VERTICAL}>
-          <box>
-          <label wrap class="accent" label="1h" xalign={1} widthRequest={60} />
-          <label wrap class="accent" label="1d" xalign={1} widthRequest={60} />
-          <label wrap class="accent" label="1w" xalign={1} widthRequest={60} />
-          <label wrap class="accent" label="1m" xalign={1} widthRequest={60} />
-          <label wrap class="accent" label="1y" xalign={1} widthRequest={60} />
+        <box spacing={5}>
+          <label wrap class="accent" label="ASSET" xalign={0} widthRequest={50} />
+          <box widthRequest={60} spacing={0}>
+            <box widthRequest={12} />
+            <label wrap class="accent" label="1h" xalign={0} />
+          </box>
+          <box widthRequest={60} spacing={0}>
+            <box widthRequest={12} />
+            <label wrap class="accent" label="1d" xalign={0} />
+          </box>
+          <box widthRequest={60} spacing={0}>
+            <box widthRequest={12} />
+            <label wrap class="accent" label="1w" xalign={0} />
+          </box>
+          <box widthRequest={60} spacing={0}>
+            <box widthRequest={12} />
+            <label wrap class="accent" label="1m" xalign={0} />
+          </box>
+          <box widthRequest={60} spacing={0}>
+            <box widthRequest={12} />
+            <label wrap class="accent" label="1y" xalign={0} />
+          </box>
         </box>
-        <box orientation={Gtk.Orientation.VERTICAL}>
+        <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
           <For each={assets}>
             {(item) => (
-              <box>
-                <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="gray2" label={item.name} widthRequest={80} />
+              <box widthRequest={399} spacing={5}>
+                <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="gray2" label={item.name} widthRequest={50} />
                 <Cell val={item.pct1h} />
                 <Cell val={item.pct1d} />
                 <Cell val={item.pct1w} />
