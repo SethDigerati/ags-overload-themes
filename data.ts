@@ -56,6 +56,10 @@ export const [netLocalIp, setNetLocalIp] = createState("N/A")
 export const [netLatency, setNetLatency] = createState("N/A")
 export const [netLoss, setNetLoss] = createState("0")
 export const [netJitter, setNetJitter] = createState("N/A")
+export const [netISP, setNetISP] = createState("N/A")
+export const [netConnections, setNetConnections] = createState("0")
+export const [netInbound, setNetInbound] = createState("0")
+export const [netOutbound, setNetOutbound] = createState("0")
 
 export const [diskUsed, setDiskUsed] = createState("0")
 export const [diskFree, setDiskFree] = createState("0")
@@ -218,6 +222,8 @@ function collectNet() {
   setNetStatus(readSys(`/sys/class/net/${iface}/operstate`) === "up" ? "ONLINE" : "OFFLINE")
   const ssid = run(`iwgetid -r ${iface} 2>/dev/null`).trim()
   if (ssid) setNetSSID(ssid)
+  const bitrate = run(`iwconfig ${iface} 2>/dev/null | grep -o 'Bit Rate[=:][0-9.]*' | grep -o '[0-9.]*'`).trim()
+  if (bitrate) setNetBitrate(bitrate + " Mb/s")
   const dev = readSys("/proc/net/dev")
   if (!dev) return
   for (const l of dev.split("\n")) {
@@ -232,7 +238,58 @@ function collectNet() {
     _prevRx = rx; _prevTx = tx
     break
   }
+  const wl = readSys("/proc/net/wireless")
+  if (wl) {
+    for (const l of wl.split("\n")) {
+      if (!l.trim().startsWith(iface + ":")) continue
+      const p = l.trim().split(/\s+/)
+      if (p.length >= 4) {
+        const link = parseInt(p[2]) || 0
+        setNetSignal(`${link}/70`)
+      }
+      break
+    }
+  }
   setNetLocalIp(run(`ip -4 addr show ${iface} 2>/dev/null | grep inet | awk '{print $2}' | cut -d/ -f1`).trim() || "N/A")
+}
+
+function collectNetConns() {
+  const tcp = readSys("/proc/net/tcp")
+  if (!tcp) return
+  let total = 0, inbound = 0, outbound = 0
+  for (const l of tcp.split("\n")) {
+    const p = l.trim().split(/\s+/)
+    if (p.length < 4 || p[0] === "sl") continue
+    total++
+    const localPort = parseInt(p[1].split(":")[1], 16)
+    if (localPort <= 32767) inbound++
+    else outbound++
+  }
+  setNetConnections(String(total))
+  setNetInbound(String(inbound))
+  setNetOutbound(String(outbound))
+}
+
+let _pingCache = { time: 0, latency: "N/A", loss: "0", jitter: "N/A" }
+const PING_INTERVAL = 15000
+
+function collectNetPing() {
+  const now = Date.now()
+  if (now - _pingCache.time < PING_INTERVAL) return
+  _pingCache.time = now
+  const out = run('ping -c 3 -q 8.8.8.8 2>/dev/null')
+  if (!out) { setNetLatency("N/A"); setNetLoss("100"); setNetJitter("0.00"); return }
+  const lossM = out.match(/([\d.]+)% packet loss/)
+  const rttM = out.match(/[\d.]+\/([\d.]+)\/[\d.]+\/([\d.]+)/)
+  if (lossM) { setNetLoss(lossM[1]); _pingCache.loss = lossM[1] }
+  if (rttM) {
+    setNetLatency(`${rttM[1]}ms ± ${rttM[2]}ms`)
+    setNetJitter(rttM[2])
+    _pingCache.latency = `${rttM[1]}ms ± ${rttM[2]}ms`
+    _pingCache.jitter = rttM[2]
+  } else {
+    setNetLatency("N/A"); setNetJitter("0.00")
+  }
 }
 
 function collectDisk() {
@@ -321,9 +378,11 @@ function updateAll() {
     collectTemps()
     collectGpu()
     collectNet()
+    collectNetConns()
     collectDisk()
   } catch (e) { console.error("data update:", e) }
 }
 
 interval(1000, updateAll)
+interval(PING_INTERVAL, collectNetPing)
 updateAll()

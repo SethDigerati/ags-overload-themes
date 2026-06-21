@@ -21,7 +21,7 @@ window.Quote {
 }
 
 window.Gpu {
-  margin-top: 870px;
+  margin-top: 920px;
 }
 
 window.Memory {
@@ -68,7 +68,7 @@ label.quote-author {
 }
 
 label.green {
-  color: #77B753;
+  color: #00FF00;
 }
 
 label.gray1 {
@@ -84,7 +84,7 @@ label.gray3 {
 }
 
 label.positive {
-  color: #77B753;
+  color: #00FF00;
   font-weight: bold;
 }
 
