@@ -52,8 +52,18 @@ fetchMarket().catch((e) => console.error("market init:", e))
 
 function Cell({ val }: { val: string }) {
   const n = parseFloat(val)
-  if (n > 0) return <label widthRequest={60} wrap class="positive" label={`▲${val}%`} xalign={1} />
-  if (n < 0) return <label widthRequest={60} wrap class="negative" label={`▼${Math.abs(n).toFixed(1)}%`} xalign={1} />
+  if (n > 0) return (
+    <box widthRequest={60}>
+      <label wrap class="positive" label="▲" xalign={0} />
+      <label wrap class="gray2" label={`${val}%`} xalign={1} hexpand />
+    </box>
+  )
+  if (n < 0) return (
+    <box widthRequest={60}>
+      <label wrap class="negative" label="▼" xalign={0} />
+      <label wrap class="gray2" label={`${Math.abs(n).toFixed(1)}%`} xalign={1} hexpand />
+    </box>
+  )
   return <label widthRequest={60} wrap class="gray2" label="─0.0%" xalign={1} />
 }
 
@@ -62,8 +72,8 @@ export default function MarketWidget() {
     <window visible name="market" class="Market" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="MARKET" />
-        <box>
-          <label wrap label="ASSET" widthRequest={80} />
+        <box class="market-table" orientation={Gtk.Orientation.VERTICAL}>
+          <box>
           <label wrap class="accent" label="1h" xalign={1} widthRequest={60} />
           <label wrap class="accent" label="1d" xalign={1} widthRequest={60} />
           <label wrap class="accent" label="1w" xalign={1} widthRequest={60} />
@@ -74,7 +84,7 @@ export default function MarketWidget() {
           <For each={assets}>
             {(item) => (
               <box>
-                <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="section-header" label={item.name} widthRequest={80} />
+                <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="gray2" label={item.name} widthRequest={80} />
                 <Cell val={item.pct1h} />
                 <Cell val={item.pct1d} />
                 <Cell val={item.pct1w} />
