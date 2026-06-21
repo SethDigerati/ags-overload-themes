@@ -164,6 +164,7 @@ export default function MarketWidget() {
             <label wrap class="accent" label="1y" xalign={0} />
           </box>
         </box>
+        <box class="hr-line" />
         <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
           <For each={assets}>
             {(item) => (
@@ -178,6 +179,7 @@ export default function MarketWidget() {
             )}
           </For>
         </box>
+        <box class="hr-line" />
         <label ellipsize={3} maxWidthChars={40} wrap class="gray3" label={createComputed(() => forex())} xalign={0.5} />
       </box>
     </window>
