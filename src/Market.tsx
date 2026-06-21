@@ -11,7 +11,7 @@ const coinIds = ["bitcoin", "ethereum", "solana", "ripple", "dogecoin", "cardano
 const coinNames = ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "TRX", "AVAX", "LINK", "DOT", "LTC"]
 
 const [assets, setAssets] = createState<Array<{ name: string; cur: string; pct1h: string; pct1d: string; pct1w: string }>>(
-  coinNames.map((n) => ({ name: n, cur: "...", pct1h: "0", pct1d: "0", pct1w: "0" }))
+  coinNames.slice(0, 6).map((n) => ({ name: n, cur: "...", pct1h: "0", pct1d: "0", pct1w: "0" }))
 )
 const [forex, setForex] = createState("")
 
@@ -30,8 +30,8 @@ async function fetchMarket() {
       pct1d: (d.price_change_percentage_24h ?? 0).toFixed(1),
       pct1w: (d.price_change_percentage_7d_in_currency ?? 0).toFixed(1),
     }))
-    setAssets(updated)
-    console.log("market: got", updated.length, "coins")
+    setAssets(updated.slice(0, 6))
+    console.log("market: got", Math.min(updated.length, 6), "coins")
   } catch (e) { console.error("market fetch:", e) }
 
   try {
