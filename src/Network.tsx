@@ -29,6 +29,7 @@ export default function Network() {
     >
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} ellipsize={3} maxWidthChars={50} class="section-header" label={createComputed(() => `NETWORK(${netIface()})`)} />
+        <box class="hr-line" />
         <box>
           <label class="accent" label="Status : " widthRequest={netFieldWidth} xalign={1} />
           <label ellipsize={3} maxWidthChars={50} wrap hexpand xalign={0}

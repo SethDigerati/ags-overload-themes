@@ -27,6 +27,7 @@ export default function Memory() {
     >
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="RAM" />
+        <box class="hr-line" />
         <box>
           <label class="gray1" xalign={0} label="Used: " />
           <label ellipsize={3} maxWidthChars={30} class="gray1" xalign={0} hexpand
@@ -37,6 +38,7 @@ export default function Memory() {
         <levelbar hexpand heightRequest={10} value={createComputed(() => memPerc() / 100)}
           cssClasses={createComputed(() => { const p = memPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
         <label wrap xalign={0} class="section-header" label="SWAP" />
+        <box class="hr-line" />
         <box>
           <label class="gray1" xalign={0} label="Used: " />
           <label ellipsize={3} maxWidthChars={30} class="gray1" xalign={0} hexpand
@@ -47,8 +49,10 @@ export default function Memory() {
         <levelbar hexpand heightRequest={10} value={createComputed(() => swapPerc() / 100)}
           cssClasses={createComputed(() => { const p = swapPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
         <label wrap xalign={0} class="section-header" label="STORAGE DEVICES" />
+        <box class="hr-line" />
         <label xalign={0} ellipsize={3} maxWidthChars={55} class="gray3" label={createComputed(() => storageDevices() || "N/A")} />
         <label wrap xalign={0} class="section-header" label="DISK" />
+        <box class="hr-line" />
         <box>
           <label class="gray1" xalign={0} label="Used: " />
           <label ellipsize={3} maxWidthChars={30} class="gray1" xalign={0} hexpand

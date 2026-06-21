@@ -50,6 +50,7 @@ export default function QuoteWidget() {
     <window visible name="quote" class="Quote" anchor={BOTTOM | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="QUOTE" />
+        <box class="hr-line" />
         <box>
           <label wrap maxWidthChars={40} class="gray1" label={createComputed(() => quote().text)} xalign={0} hexpand valign={Gtk.Align.CENTER} />
           <image file={authorImage} pixelSize={createComputed(() => authorImage() ? 80 : 0)} halign={Gtk.Align.END} valign={Gtk.Align.START} />

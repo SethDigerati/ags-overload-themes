@@ -141,6 +141,7 @@ export default function MarketWidget() {
     <window visible name="market" class="Market" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="MARKET" />
+        <box class="hr-line" />
         <box spacing={5}>
           <label wrap class="accent" label="ASSET" xalign={0} widthRequest={50} />
           <box widthRequest={60} spacing={0}>
