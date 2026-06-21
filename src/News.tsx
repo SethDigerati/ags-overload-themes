@@ -88,16 +88,16 @@ export default function NewsWidget() {
     <window visible name="news" class="News" anchor={BOTTOM | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="NEWS" />
-        <label wrap class="gray3" label={`SOURCE: ${API_SOURCE}`} xalign={0} />
+        <label wrap ellipsize={3} maxWidthChars={30} class="gray3" label={`SOURCE : ${API_SOURCE}`} xalign={0} />
         <For each={items}>
           {(item) =>
             item.type === "header"
-              ? <label wrap class="accent" xalign={0.5} label={item.label} />
+              ? <label wrap ellipsize={3} maxWidthChars={30} class="accent" xalign={0.5} label={item.label} />
               : <box orientation={Gtk.Orientation.VERTICAL}>
                   <box>
                     <label xalign={0} maxWidthChars={50} useMarkup class="gray1" label={`<b>[${esc(item.source)}]</b>`} />
                     <box hexpand valign={Gtk.Align.CENTER} class="hr-inline" />
-                    <label class="gray3" label={`[${item.time}]`} />
+                    <label ellipsize={3} maxWidthChars={8} class="gray3" label={`[${item.time}]`} />
                   </box>
                   <label wrap maxWidthChars={50} class="gray1" xalign={0} label={item.title} />
                 </box>

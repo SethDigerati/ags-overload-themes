@@ -131,7 +131,7 @@ export default function LastFmWidget() {
                   <box>
                     <label class="accent" label="Plays: " xalign={0} />
                     <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.playcount} xalign={0} />
-                    <label class="accent" label="  Artist plays: " xalign={0} />
+                    <label class="accent" label="Artist plays: " xalign={0} />
                     <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.artistPlaycount} xalign={0} />
                   </box>
                 </box>

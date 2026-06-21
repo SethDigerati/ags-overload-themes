@@ -290,6 +290,12 @@ function formatBytes(bytes: number): string {
   return (bytes / 1024).toFixed(0) + " KiB"
 }
 
+export function formatSpeed(kib: number): string {
+  if (kib >= 1048576) return (kib / 1048576).toFixed(2) + "GiB/s"
+  if (kib >= 1024) return (kib / 1024).toFixed(1) + "MiB/s"
+  return Math.round(kib) + "KiB/s"
+}
+
 function updateAll() {
   try {
     const p = calcCpuPerc()
@@ -300,7 +306,7 @@ function updateAll() {
     const bars = cores.map((c, idx) => ({
       idx,
       h: Math.max(1, Math.round((c / 100) * 22)),
-      cls: c >= 90 ? "cpu-red" : c >= 75 ? "cpu-yellow" : "cpu-white",
+      cls: c >= 85 ? "cpu-yellow" : "cpu-white",
     }))
     setCoreBars(bars)
     const rows: typeof bars[] = []

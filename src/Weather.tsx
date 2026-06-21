@@ -69,15 +69,25 @@ const moon = createComputed(() => {
 
 async function fetchLocation() {
   try {
+    console.log("weather: fetching location from ipinfo")
     const res = await fetch("https://ipinfo.io/json")
     const data = await res.json()
+    if (!data || !data.city) {
+      throw new Error("Invalid ipinfo response: " + JSON.stringify(data))
+    }
+    console.log("weather: got location", data.city, data.country, data.loc)
     setLocation({ city: data.city || "Unknown", country: data.country || "" })
     if (data.loc) { const [lat, lon] = data.loc.split(","); setLatLon({ lat, lon }) }
-  } catch (e) { console.error("weather ipinfo:", e) }
+  } catch (e) {
+    console.error("weather ipinfo error:", e)
+    setLocation({ city: "Location Error", country: "" })
+  }
 }
 
 async function fetchWeather() {
-  if (!API_KEY || !latLon().lat) return
+  if (!API_KEY) { console.log("weather: no API key"); return }
+  if (!latLon().lat) { console.log("weather: no latLon, skipping fetch"); return }
+  console.log("weather: fetching weather for", latLon().lat, latLon().lon)
   try {
     const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latLon().lat}&lon=${latLon().lon}&appid=${API_KEY}&units=metric`)
     const data = await res.json()
@@ -85,6 +95,7 @@ async function fetchWeather() {
       const w = data.weather[0]
       const isDay = w.icon.endsWith("d")
       const windDeg = data.wind.deg || 0
+      console.log("weather: got data", data.main.temp, w.description)
       setWeather({
         temp: Math.round(data.main.temp).toString(),
         tempMin: Math.round(data.main.temp_min).toString(),
@@ -100,16 +111,20 @@ async function fetchWeather() {
         icon: mapWeatherIcon(w.id, isDay),
         updateTime: new Date().toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" }),
       })
+    } else {
+      console.error("weather: API returned error", data.cod, data.message)
     }
-  } catch (e) { console.error("weather fetch:", e) }
+  } catch (e) { console.error("weather fetch error:", e) }
 }
 
 async function fetchForecast() {
-  if (!API_KEY || !latLon().lat) return
+  if (!API_KEY || !latLon().lat) { console.log("weather: no latLon for forecast"); return }
+  console.log("weather: fetching forecast")
   try {
     const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${latLon().lat}&lon=${latLon().lon}&appid=${API_KEY}&units=metric`)
     const data = await res.json()
-    if (!data.list) return
+    if (!data.list) { console.error("weather: forecast no list", data); return }
+    console.log("weather: got forecast", data.list.length, "entries")
 
     const todayPop = data.list[0] ? Math.round((data.list[0].pop || 0) * 100).toString() : "0"
     setWeather({ ...weather(), pop: todayPop })
@@ -154,44 +169,45 @@ export default function WeatherWidget() {
         <box>
           <label ellipsize={3} maxWidthChars={30} wrap class="gray1" hexpand xalign={0}
             label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} />
-          <label class="gray2 moon-name" label={createComputed(() => moon().name)} />
-          <label class="moon-icon" label={createComputed(() => moon().icon)} />
+          <label ellipsize={3} maxWidthChars={20} class="gray2 moon-name" label={createComputed(() => moon().name)} />
+          <label ellipsize={3} maxWidthChars={3} class="moon-icon" label={createComputed(() => moon().icon)} />
         </box>
         <label ellipsize={3} maxWidthChars={40} wrap xalign={0} class="weather-desc" label={createComputed(() => weather().description)} />
         <box>
           <box class="weather-row">
-            <image class="weather-icon" file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
-            <label class="weather-temp" label={createComputed(() => `${weather().temp}°C`)} xalign={0} />
+            <image class="weather-icon" marginStart={10} file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
+            <label maxWidthChars={8} class="weather-temp" label={createComputed(() => `${weather().temp}°C`)} xalign={0} />
           </box>
-          <box orientation={Gtk.Orientation.VERTICAL}>
+            <box marginStart={15} orientation={Gtk.Orientation.VERTICAL}>
             <box>
               <label class="accent" label="TEMP: " />
-              <label label={createComputed(() => `${weather().tempMin}-${weather().tempMax}°C`)} />
+              <label ellipsize={3} maxWidthChars={15} label={createComputed(() => `${weather().tempMin}-${weather().tempMax}°C`)} />
             </box>
             <box>
               <label class="accent" label="PRECIPITATION: " />
-              <label hexpand label={createComputed(() => `${weather().precipitation} mm`)} />
+              <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().precipitation} mm`)} />
+              <label hexpand />
               <label class="accent" label="ODDS: " />
-              <label label={createComputed(() => `${weather().pop}%`)} />
+              <label ellipsize={3} maxWidthChars={6} label={createComputed(() => `${weather().pop}%`)} />
             </box>
             <box>
               <label class="accent" label="HUMIDITY: " />
-              <label label={createComputed(() => `${weather().humidity}%`)} />
+              <label ellipsize={3} maxWidthChars={6} label={createComputed(() => `${weather().humidity}%`)} />
             </box>
             <box>
               <label class="accent" label="PRESSURE: " />
-              <label label={createComputed(() => `${weather().pressure} hPa`)} />
+              <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().pressure} hPa`)} />
             </box>
             <box>
               <label class="accent" label="WINDS: " />
-              <label label={createComputed(() => `${weather().windSpeed} km/h`)} />
+              <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().windSpeed} km/h`)} />
               <label hexpand />
               <label class="accent" label="DIRECTION: " />
-              <label label={createComputed(() => `${weather().windDirIcon} ${weather().windDir}`)} />
+              <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().windDirIcon} ${weather().windDir}`)} />
             </box>
             <box>
               <label class="accent" label="VISIBILITY: " />
-              <label label={createComputed(() => `${weather().visibility} km`)} />
+              <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().visibility} km`)} />
             </box>
           </box>
         </box>
@@ -210,19 +226,19 @@ export default function WeatherWidget() {
           <For each={forecast}>
             {(item) => (
               <box>
-                <label label={item.day} widthRequest={50} xalign={0} />
-                <label class="gray2 weather-col" label={item.desc} widthRequest={100} xalign={0} />
-                <label label={`${item.temp}°C`} widthRequest={55} xalign={0} />
-                <label class="hmd-col" label={`${item.humidity}%`} widthRequest={50} xalign={0} />
-                <label label={`${item.wind}km/h`} widthRequest={55} xalign={0} />
-                <label class="prec-col" label={`${item.precip}mm`} widthRequest={55} xalign={0} />
-                <label label={`${item.pop}%`} xalign={1} hexpand />
+                <label ellipsize={3} maxWidthChars={5} label={item.day} widthRequest={50} xalign={0} />
+                <label class="gray2 weather-col" ellipsize={3} maxWidthChars={15} label={item.desc} widthRequest={100} xalign={0} />
+                <label ellipsize={3} maxWidthChars={8} label={`${item.temp}°C`} widthRequest={55} xalign={0} />
+                <label ellipsize={3} maxWidthChars={5} class="hmd-col" label={`${item.humidity}%`} widthRequest={50} xalign={0} />
+                <label ellipsize={3} maxWidthChars={8} label={`${item.wind}km/h`} widthRequest={55} xalign={0} />
+                <label ellipsize={3} maxWidthChars={6} class="prec-col" label={`${item.precip}mm`} widthRequest={55} xalign={0} />
+                <label ellipsize={3} maxWidthChars={5} label={`${item.pop}%`} xalign={1} hexpand />
               </box>
             )}
           </For>
         </box>
         <box class="hr-line" />
-        <label class="green" label={createComputed(() => `Last Update: ${weather().updateTime}`)} xalign={0} />
+        <label ellipsize={3} maxWidthChars={30} class="green" label={createComputed(() => `Last Update: ${weather().updateTime}`)} xalign={0} />
       </box>
     </window>
   )

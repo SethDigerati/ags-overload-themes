@@ -54,7 +54,7 @@ export default function QuoteWidget() {
           <label wrap maxWidthChars={40} class="gray1" label={createComputed(() => quote().text)} xalign={0} hexpand valign={Gtk.Align.CENTER} />
           <image file={authorImage} pixelSize={createComputed(() => authorImage() ? 80 : 0)} halign={Gtk.Align.END} valign={Gtk.Align.START} />
         </box>
-        <label wrap class="quote-author" label={createComputed(() => `~${quote().author}~`)} xalign={1} />
+        <label wrap ellipsize={3} maxWidthChars={40} class="quote-author" label={createComputed(() => `~${quote().author}~`)} xalign={1} />
       </box>
     </window>
   )
