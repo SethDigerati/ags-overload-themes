@@ -17,7 +17,7 @@ window.Cpu {
 }
 
 window.Quote {
-  margin-top: 1100px;
+  margin-bottom: 10px;
 }
 
 window.Gpu {
@@ -41,7 +41,7 @@ window.LastFm {
 }
 
 window.Market {
-  margin-top: 700px;
+  margin-top: 650px;
 }
 
 window.News {
