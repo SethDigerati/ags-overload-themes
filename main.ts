@@ -23,7 +23,7 @@ app.start({
     Weather()
     LastFm()
     Market()
-    News()
+//    News()
     Quote()
   },
 })
