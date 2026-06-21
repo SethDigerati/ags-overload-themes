@@ -66,17 +66,19 @@ export default function MarketWidget() {
           <label wrap class="gray2" label="1d" xalign={1} widthRequest={55} />
           <label wrap class="gray2" label="1w" xalign={1} widthRequest={55} />
         </box>
-        <For each={assets}>
-          {(item) => (
-            <box>
-              <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="section-header" label={item.name} widthRequest={50} />
-              <Cell val={item.pct1h} />
-              <Cell val={item.pct1d} />
-              <Cell val={item.pct1w} />
-            </box>
-          )}
-        </For>
-        <label ellipsize={3} maxWidthChars={15} wrap class="gray3" label={createComputed(() => forex())} xalign={1} />
+        <box orientation={Gtk.Orientation.VERTICAL}>
+          <For each={assets}>
+            {(item) => (
+              <box>
+                <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="section-header" label={item.name} widthRequest={50} />
+                <Cell val={item.pct1h} />
+                <Cell val={item.pct1d} />
+                <Cell val={item.pct1w} />
+              </box>
+            )}
+          </For>
+        </box>
+        <label ellipsize={3} maxWidthChars={15} wrap class="gray3" label={createComputed(() => forex())} xalign={0.5} />
       </box>
     </window>
   )
