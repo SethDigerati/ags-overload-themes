@@ -6,7 +6,7 @@ import { fetch } from "ags/fetch"
 import { writeFile } from "./util"
 import { env } from "../config"
 
-const { TOP, RIGHT } = Astal.WindowAnchor
+const { BOTTOM, LEFT } = Astal.WindowAnchor
 const API_KEY = env.ZENQUOTES_API_KEY || ""
 const DATA_DIR = "/tmp/ags/quote"
 
@@ -47,7 +47,7 @@ fetchQuote().catch((e) => console.error("quote init:", e))
 
 export default function QuoteWidget() {
   return (
-    <window visible name="quote" class="Quote" anchor={TOP | RIGHT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
+    <window visible name="quote" class="Quote" anchor={BOTTOM | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="QUOTE" />
         <box>
