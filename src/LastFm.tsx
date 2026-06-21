@@ -99,6 +99,7 @@ export default function LastFmWidget() {
     <window visible name="lastfm" class="LastFm" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="LAST.FM" />
+        <box class="hr-line" />
         <label ellipsize={3} maxWidthChars={40} wrap class="accent" label={createComputed(() => nowPlaying())} xalign={0} />
         <For each={tracks}>
           {(item, idx) => (

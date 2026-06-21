@@ -88,6 +88,7 @@ export default function NewsWidget() {
     <window visible name="news" class="News" anchor={BOTTOM | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="NEWS" />
+        <box class="hr-line" />
         <label wrap ellipsize={3} maxWidthChars={30} class="gray3" label={`SOURCE : ${API_SOURCE}`} xalign={0} />
         <For each={items}>
           {(item) =>

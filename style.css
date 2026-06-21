@@ -195,7 +195,7 @@ label.weather-temp {
 box.hr-line {
   min-height: 1px;
   background: #FFFFFF;
-  margin: 2px 0;
+  margin: 1px 0;
 }
 
 box.hr-inline {

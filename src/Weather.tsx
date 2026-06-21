@@ -166,6 +166,7 @@ export default function WeatherWidget() {
     <window visible name="weather" class="Weather" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <label wrap xalign={0} class="section-header" label="WEATHER" />
+        <box class="hr-line" />
         <box>
           <label ellipsize={3} maxWidthChars={30} wrap class="gray1" hexpand xalign={0}
             label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} />
@@ -213,6 +214,7 @@ export default function WeatherWidget() {
         </box>
         <box orientation={Gtk.Orientation.VERTICAL}>
           <label wrap xalign={0} class="section-header" label="5-DAY FORECAST" />
+          <box class="hr-line" />
           <box class="forecast-header">
             <label class="accent" label="Day" widthRequest={50} xalign={0} />
             <label class="accent weather-col" label="Weather" widthRequest={100} xalign={0} />

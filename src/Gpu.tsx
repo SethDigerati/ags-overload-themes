@@ -25,6 +25,7 @@ export default function Gpu() {
     >
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399} overflow={Gtk.Overflow.HIDDEN}>
         <label wrap xalign={0} ellipsize={3} maxWidthChars={50} class="section-header" label={createComputed(() => `GPU (${gpuTemp()}°C)`)} />
+        <box class="hr-line" />
         <box>
           <label class="accent" xalign={1} widthRequest={gpuFieldWidth} label="Model : " />
           <box widthRequest={250}>
