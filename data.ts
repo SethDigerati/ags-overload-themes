@@ -254,7 +254,7 @@ function collectDisk() {
       }
     }
   }
-  setStorageDevices(run(`lsblk -ro NAME,SIZE,TYPE,MOUNTPOINTS 2>/dev/null | awk '$3=="disk"||$3=="rom"{print "\\u2500"$1"-------("$2")"}; $3=="part"{mnt=$4; if(length(mnt)>20) mnt=substr(mnt,1,17) "..."; if(mnt) print "  \\u2514"$1"-----("$2")--" mnt; else print "  \\u2514"$1"-----("$2")"}'`).trim())
+  setStorageDevices(run(`lsblk -ro NAME,SIZE,TYPE,MOUNTPOINTS 2>/dev/null | awk 'function d(n){r="";for(i=1;i<=n;i++)r=r"-";return r} $3=="disk"||$3=="rom"{n="->"$1;n=n d(17-length(n));print n"("$2")"} $3=="part"{mnt=$4;if(length(mnt)>20)mnt=substr(mnt,1,17)"...";n="  \\u2514--"$1;n=n d(17-length(n));l=n"("$2")";if(mnt){p=d(27-length(l));print l p"--" mnt}else print l}'`).trim())
 }
 
 function collectSys() {
