@@ -29,31 +29,36 @@ async function fetchLastfm() {
     const items = Array.isArray(data.recenttracks.track) ? data.recenttracks.track : [data.recenttracks.track]
     const ts = Date.now()
     const all: Array<{ artist: string; track: string; album: string; duration: string; playcount: string; artistPlaycount: string; image: string; isNowPlaying: boolean }> = []
-    for (let i = 0; i < Math.min(4, items.length); i++) {
+    const count = Math.min(4, items.length)
+    const imgTasks = []
+    for (let i = 0; i < count; i++) {
       const t = items[i]
-      const imgUrl = t.image?.find((img: any) => img.size === "extralarge")?.["#text"] || ""
-      let imgPath = ""
-      if (imgUrl) {
-        try {
-          const imgRes = await fetch(imgUrl)
-          const imgBytes = await imgRes.bytes()
-          if (imgBytes) {
-            imgPath = `${DATA_DIR}/cover_${ts}_${i}.jpg`
-            writeFile(imgPath, imgBytes.toArray())
-          }
-        } catch (e) { console.error("lastfm image download:", e) }
-      }
-      all.push({
-        artist: t.artist?.["#text"] || "Unknown",
-        track: t.name || "Unknown",
-        album: t.album?.["#text"] || "Unknown",
-        duration: "-",
-        playcount: "-",
-        artistPlaycount: "-",
-        image: imgPath,
-        isNowPlaying: t["@attr"]?.nowplaying === "true",
-      })
+      imgTasks.push((async () => {
+        const imgUrl = t.image?.find((img: any) => img.size === "extralarge")?.["#text"] || ""
+        let imgPath = ""
+        if (imgUrl) {
+          try {
+            const imgRes = await fetch(imgUrl)
+            const imgBytes = await imgRes.bytes()
+            if (imgBytes) {
+              imgPath = `${DATA_DIR}/cover_${ts}_${i}.jpg`
+              writeFile(imgPath, imgBytes.toArray())
+            }
+          } catch (e) { console.error("lastfm image download:", e) }
+        }
+        return {
+          artist: t.artist?.["#text"] || "Unknown",
+          track: t.name || "Unknown",
+          album: t.album?.["#text"] || "Unknown",
+          duration: "-",
+          playcount: "-",
+          artistPlaycount: "-",
+          image: imgPath,
+          isNowPlaying: t["@attr"]?.nowplaying === "true",
+        }
+      })())
     }
+    all.push(...(await Promise.all(imgTasks)))
     // Separate nowplaying from scrobbles
     const nowPlayingTrack = all.find(t => t.isNowPlaying)
     const scrobbles = all.filter(t => !t.isNowPlaying)
@@ -67,26 +72,21 @@ async function fetchLastfm() {
       display.push(s)
     }
     setNowPlaying(nowPlayingTrack ? "▶ Playing" : "⏸ Paused")
-    for (let i = 0; i < display.length; i++) {
+    await Promise.all(display.map(async (track, i) => {
       try {
-        const info = await fetch(
-          `https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(display[i].artist)}&track=${encodeURIComponent(display[i].track)}&api_key=${API_KEY}&format=json`
-        )
-        const infoData = await info.json()
+        const [infoRes, artistRes] = await Promise.all([
+          fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(track.artist)}&track=${encodeURIComponent(track.track)}&api_key=${API_KEY}&format=json`),
+          fetch(`https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(track.artist)}&user=${USERNAME}&api_key=${API_KEY}&format=json`),
+        ])
+        const [infoData, artistData] = await Promise.all([infoRes.json(), artistRes.json()])
         if (infoData?.track?.duration) {
           const secs = Math.floor(parseInt(infoData.track.duration) / 1000)
           display[i].duration = `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, "0")}`
         }
         if (infoData?.track?.userplaycount) display[i].playcount = infoData.track.userplaycount
-      } catch (e) { console.error("lastfm track info:", e) }
-      try {
-        const artistInfo = await fetch(
-          `https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(display[i].artist)}&user=${USERNAME}&api_key=${API_KEY}&format=json`
-        )
-        const artistData = await artistInfo.json()
         if (artistData?.artist?.stats?.userplaycount) display[i].artistPlaycount = artistData.artist.stats.userplaycount
-      } catch (e) { console.error("lastfm artist info:", e) }
-    }
+      } catch (e) { console.error("lastfm track info:", e) }
+    }))
     setTracks(display)
   } catch (e) { console.error("lastfm fetch:", e) }
 }
@@ -102,18 +102,41 @@ export default function LastFmWidget() {
         <label ellipsize={3} maxWidthChars={40} wrap class="accent" label={createComputed(() => nowPlaying())} xalign={0} />
         <For each={tracks}>
           {(item, idx) => (
-            <box>
-              {item.image ? (
-                <image class="cover-img" file={item.image} pixelSize={idx.peek() === 0 ? 100 : 80} />
-              ) : (
-                <box class="cover-img" widthRequest={idx.peek() === 0 ? 100 : 80} heightRequest={idx.peek() === 0 ? 100 : 80} />
-              )}
-              <box class="track-details" orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
-                <label wrap maxWidthChars={40} class="gray2" label={`Track: ${item.track}`} xalign={0} />
-                <label wrap maxWidthChars={40} class="gray3" label={`Artist: ${item.artist}`} xalign={0} />
-                <label wrap maxWidthChars={40} class="gray3" label={`Album: ${item.album}`} xalign={0} />
-                <label ellipsize={3} maxWidthChars={40} wrap class="gray3" label={idx.peek() === 0 ? `Duration: ${item.duration} | Plays: ${item.playcount} | Artist plays: ${item.artistPlaycount}` : `Plays: ${item.playcount} | Artist plays: ${item.artistPlaycount}`} xalign={0} />
+            <box orientation={Gtk.Orientation.VERTICAL}>
+              <box>
+                {item.image ? (
+                  <image class="cover-img" file={item.image} pixelSize={idx.peek() === 0 ? 100 : 80} />
+                ) : (
+                  <box class="cover-img" widthRequest={idx.peek() === 0 ? 100 : 80} heightRequest={idx.peek() === 0 ? 100 : 80} />
+                )}
+                <box class="track-details" orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
+                  <box>
+                    <label class="accent" label="Track: " xalign={0} />
+                    <label wrap maxWidthChars={40} class="gray2" label={item.track} xalign={0} hexpand />
+                  </box>
+                  <box>
+                    <label class="accent" label="Artist: " xalign={0} />
+                    <label wrap maxWidthChars={40} class="gray3" label={item.artist} xalign={0} hexpand />
+                  </box>
+                  <box>
+                    <label class="accent" label="Album: " xalign={0} />
+                    <label wrap maxWidthChars={40} class="gray3" label={item.album} xalign={0} hexpand />
+                  </box>
+                  {idx.peek() === 0 && (
+                    <box>
+                      <label class="accent" label="Duration: " xalign={0} />
+                      <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.duration} xalign={0} />
+                    </box>
+                  )}
+                  <box>
+                    <label class="accent" label="Plays: " xalign={0} />
+                    <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.playcount} xalign={0} />
+                    <label class="accent" label="  Artist plays: " xalign={0} />
+                    <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.artistPlaycount} xalign={0} />
+                  </box>
+                </box>
               </box>
+              {idx.peek() === 0 && <box class="hr-line" />}
             </box>
           )}
         </For>
