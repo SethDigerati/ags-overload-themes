@@ -155,7 +155,7 @@ picture {
 }
 
 .cover-img {
-  padding: 5px;
+  padding: 2px;
 }
 
 
@@ -195,7 +195,7 @@ label.weather-temp {
 box.hr-line {
   min-height: 1px;
   background: #FFFFFF;
-  margin: 4px 0;
+  margin: 2px 0;
 }
 
 box.forecast-header {
