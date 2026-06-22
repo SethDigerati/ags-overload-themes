@@ -82,15 +82,14 @@ label.date-large {
 
 box.cpu-gauge {
   background: transparent;
-  border: 1px solid #FFFFFF;
 }
 
 box.cpu-white {
-  background: #FFFFFF;
+  background: linear-gradient(to bottom, #FFFFFF, transparent);
 }
 
 box.cpu-yellow {
-  background: #E3C30D;
+  background: linear-gradient(to bottom, #E3C30D, transparent);
 }
 
 box.cpu-red {
