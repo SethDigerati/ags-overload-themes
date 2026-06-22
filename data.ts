@@ -25,11 +25,13 @@ export const [coreBars, setCoreBars] = createState<{ idx: number; h: number; cls
 export const [coreRows, setCoreRows] = createState<{ idx: number; h: number; cls: string }[][]>([])
 export const [topProcs, setTopProcs] = createState<Array<{ name: string; pid: string; threads: string; cpu: string }>>([])
 export const [topMemProcs, setTopMemProcs] = createState<Array<{ name: string; pid: string; vsize: string; size: string }>>([])
-export const [cpuGraphData, setCpuGraphData] = createState<number[]>([])
-export const [netDownGraphData, setNetDownGraphData] = createState<number[]>([])
-export const [netUpGraphData, setNetUpGraphData] = createState<number[]>([])
-export const [diskReadGraphData, setDiskReadGraphData] = createState<number[]>([])
-export const [diskWriteGraphData, setDiskWriteGraphData] = createState<number[]>([])
+const MAX_GRAPH = 60
+const INIT_GRAPH = (): number[] => new Array(MAX_GRAPH).fill(0)
+export const [cpuGraphData, setCpuGraphData] = createState<number[]>(INIT_GRAPH())
+export const [netDownGraphData, setNetDownGraphData] = createState<number[]>(INIT_GRAPH())
+export const [netUpGraphData, setNetUpGraphData] = createState<number[]>(INIT_GRAPH())
+export const [diskReadGraphData, setDiskReadGraphData] = createState<number[]>(INIT_GRAPH())
+export const [diskWriteGraphData, setDiskWriteGraphData] = createState<number[]>(INIT_GRAPH())
 
 export const [memPerc, setMemPerc] = createState(0)
 export const [memUsed, setMemUsed] = createState("0")
@@ -94,16 +96,14 @@ let prevCoreTotal: number[] = []
 let _prevRx = 0, _prevTx = 0, _prevDiskRead = 0, _prevDiskWrite = 0
 const NCPUS = parseInt(run("nproc")) || 1
 
-const cpuGraphBuf: number[] = []
-const netDownGraphBuf: number[] = []
-const netUpGraphBuf: number[] = []
-const diskReadGraphBuf: number[] = []
-const diskWriteGraphBuf: number[] = []
-const MAX_GRAPH = 60
+const cpuGraphBuf: number[] = INIT_GRAPH()
+const netDownGraphBuf: number[] = INIT_GRAPH()
+const netUpGraphBuf: number[] = INIT_GRAPH()
+const diskReadGraphBuf: number[] = INIT_GRAPH()
+const diskWriteGraphBuf: number[] = INIT_GRAPH()
 function pushGraphBuf(buf: number[], val: number, setter: (v: number[]) => void) {
-  if (buf.length === 0 && val === 0) return
   buf.push(val)
-  if (buf.length > MAX_GRAPH) buf.shift()
+  buf.shift()
   setter([...buf])
 }
 
