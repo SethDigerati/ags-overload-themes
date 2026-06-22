@@ -1,7 +1,7 @@
 import app from "ags/gtk4/app"
 import { Astal, Gtk, Gdk } from "ags/gtk4"
 import { createComputed, For } from "ags"
-import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, coreRows } from "../data"
+import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, coreRows, topProcs } from "../data"
 
 const { TOP, RIGHT } = Astal.WindowAnchor
 
@@ -33,6 +33,25 @@ export default function Cpu() {
             </box>
           )}</For>
         </box>
+        <box class="hr-line" />
+        <box spacing={5}>
+          <label class="accent" label="Task" xalign={0} hexpand />
+          <label class="accent" label="PID" xalign={0} widthRequest={50} />
+          <label class="accent" label="Threads" xalign={0} widthRequest={55} />
+          <label class="accent" label="Size%" xalign={1} widthRequest={55} />
+        </box>
+        <box class="hr-line" />
+        <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
+          <For each={topProcs}>{(item) => (
+            <box widthRequest={399} spacing={5}>
+              <label ellipsize={3} maxWidthChars={22} wrap class="gray2" label={item.name} xalign={0} hexpand />
+              <label ellipsize={3} maxWidthChars={6} wrap class="gray2" label={item.pid} xalign={0} widthRequest={50} />
+              <label ellipsize={3} maxWidthChars={4} wrap class="gray2" label={item.threads} xalign={0} widthRequest={55} />
+              <label ellipsize={3} maxWidthChars={6} wrap class="gray2" label={createComputed(() => `${item.cpu}%`)} xalign={1} widthRequest={55} />
+            </box>
+          )}</For>
+        </box>
+        <box class="hr-line" />
       </box>
     </window>
   )
