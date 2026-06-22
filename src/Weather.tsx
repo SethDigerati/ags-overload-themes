@@ -1,11 +1,9 @@
-import app from "ags/gtk4/app"
-import { Astal, Gtk, Gdk } from "ags/gtk4"
+import { Gtk } from "ags/gtk4"
 import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
 import { env, projectRoot } from "../config"
 
-const { TOP, LEFT } = Astal.WindowAnchor
 const API_KEY = env.WEATHER_API_KEY || ""
 const ICON_DIR = `${projectRoot}/assets/icons/`
 
@@ -161,87 +159,85 @@ async function fetchForecast() {
 interval(600000, () => { fetchWeather().catch((e) => console.error("weather poll:", e)); fetchForecast().catch((e) => console.error("forecast poll:", e)) })
 fetchLocation().then(() => { fetchWeather(); fetchForecast() }).catch((e) => console.error("weather location:", e))
 
-export default function WeatherWidget() {
+export function WeatherBox() {
   return (
-    <window visible name="weather" class="Weather" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-        <label wrap xalign={0} class="section-header" label="WEATHER" />
-        <box class="hr-line" />
-        <box>
-          <label ellipsize={3} maxWidthChars={30} wrap class="gray1" hexpand xalign={0}
-            label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} />
-          <label ellipsize={3} maxWidthChars={20} class="gray2 moon-name" label={createComputed(() => moon().name)} />
-          <label ellipsize={3} maxWidthChars={3} class="moon-icon" label={createComputed(() => moon().icon)} />
-        </box>
-        <label ellipsize={3} maxWidthChars={40} wrap xalign={0} class="weather-desc" label={createComputed(() => weather().description)} />
-        <box>
-          <box class="weather-row">
-            <image class="weather-icon" marginStart={10} file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
-            <label maxWidthChars={8} class="weather-temp" label={createComputed(() => `${weather().temp}°C`)} xalign={0} />
-          </box>
-            <box marginStart={15} orientation={Gtk.Orientation.VERTICAL}>
-            <box>
-              <label class="accent" label="TEMP: " />
-              <label ellipsize={3} maxWidthChars={15} label={createComputed(() => `${weather().tempMin}-${weather().tempMax}°C`)} />
-            </box>
-            <box>
-              <label class="accent" label="PRECIPITATION: " />
-              <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().precipitation} mm`)} />
-              <label hexpand />
-              <label class="accent" label="ODDS: " />
-              <label ellipsize={3} maxWidthChars={6} label={createComputed(() => `${weather().pop}%`)} />
-            </box>
-            <box>
-              <label class="accent" label="HUMIDITY: " />
-              <label ellipsize={3} maxWidthChars={6} label={createComputed(() => `${weather().humidity}%`)} />
-            </box>
-            <box>
-              <label class="accent" label="PRESSURE: " />
-              <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().pressure} hPa`)} />
-            </box>
-            <box>
-              <label class="accent" label="WINDS: " />
-              <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().windSpeed} km/h`)} />
-              <label hexpand />
-              <label class="accent" label="DIRECTION: " />
-              <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().windDirIcon} ${weather().windDir}`)} />
-            </box>
-            <box>
-              <label class="accent" label="VISIBILITY: " />
-              <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().visibility} km`)} />
-            </box>
-          </box>
-        </box>
-        <box orientation={Gtk.Orientation.VERTICAL}>
-          <label wrap xalign={0} class="section-header" label="5-DAY FORECAST" />
-          <box class="hr-line" />
-          <box class="forecast-header">
-            <label class="accent" label="Day" widthRequest={50} xalign={0} />
-            <label class="accent weather-col" label="Weather" widthRequest={100} xalign={0} />
-            <label class="accent" label="Temp" widthRequest={55} xalign={0} />
-            <label class="accent hmd-col" label="Hmd" widthRequest={50} xalign={0} />
-            <label class="accent" label="Wind" widthRequest={55} xalign={0} />
-            <label class="accent prec-col" label="Prec" widthRequest={55} xalign={0} />
-            <label class="accent" label="Rain%" xalign={1} hexpand />
-          </box>
-          <box class="hr-line" />
-          <For each={forecast}>
-            {(item) => (
-              <box>
-                <label ellipsize={3} maxWidthChars={5} label={item.day} widthRequest={50} xalign={0} />
-                <label class="gray2 weather-col" ellipsize={3} maxWidthChars={15} label={item.desc} widthRequest={100} xalign={0} />
-                <label ellipsize={3} maxWidthChars={8} label={`${item.temp}°C`} widthRequest={55} xalign={0} />
-                <label ellipsize={3} maxWidthChars={5} class="hmd-col" label={`${item.humidity}%`} widthRequest={50} xalign={0} />
-                <label ellipsize={3} maxWidthChars={8} label={`${item.wind}km/h`} widthRequest={55} xalign={0} />
-                <label ellipsize={3} maxWidthChars={6} class="prec-col" label={`${item.precip}mm`} widthRequest={55} xalign={0} />
-                <label ellipsize={3} maxWidthChars={5} label={`${item.pop}%`} xalign={1} hexpand />
-              </box>
-            )}
-          </For>
-        </box>
-        <box class="hr-line" />
-        <label ellipsize={3} maxWidthChars={30} class="green" label={createComputed(() => `Last Update: ${weather().updateTime}`)} xalign={0} />
+    <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
+      <label wrap xalign={0} class="section-header" label="WEATHER" />
+      <box class="hr-line" />
+      <box>
+        <label ellipsize={3} maxWidthChars={30} wrap class="gray1" hexpand xalign={0}
+          label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} />
+        <label ellipsize={3} maxWidthChars={20} class="gray2 moon-name" label={createComputed(() => moon().name)} />
+        <label ellipsize={3} maxWidthChars={3} class="moon-icon" label={createComputed(() => moon().icon)} />
       </box>
-    </window>
+      <label ellipsize={3} maxWidthChars={40} wrap xalign={0} class="weather-desc" label={createComputed(() => weather().description)} />
+      <box>
+        <box class="weather-row">
+          <image class="weather-icon" marginStart={10} file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
+          <label maxWidthChars={8} class="weather-temp" label={createComputed(() => `${weather().temp}°C`)} xalign={0} />
+        </box>
+          <box marginStart={15} orientation={Gtk.Orientation.VERTICAL}>
+          <box>
+            <label class="accent" label="TEMP: " />
+            <label ellipsize={3} maxWidthChars={15} label={createComputed(() => `${weather().tempMin}-${weather().tempMax}°C`)} />
+          </box>
+          <box>
+            <label class="accent" label="PRECIPITATION: " />
+            <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().precipitation} mm`)} />
+            <label hexpand />
+            <label class="accent" label="ODDS: " />
+            <label ellipsize={3} maxWidthChars={6} label={createComputed(() => `${weather().pop}%`)} />
+          </box>
+          <box>
+            <label class="accent" label="HUMIDITY: " />
+            <label ellipsize={3} maxWidthChars={6} label={createComputed(() => `${weather().humidity}%`)} />
+          </box>
+          <box>
+            <label class="accent" label="PRESSURE: " />
+            <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().pressure} hPa`)} />
+          </box>
+          <box>
+            <label class="accent" label="WINDS: " />
+            <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().windSpeed} km/h`)} />
+            <label hexpand />
+            <label class="accent" label="DIRECTION: " />
+            <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().windDirIcon} ${weather().windDir}`)} />
+          </box>
+          <box>
+            <label class="accent" label="VISIBILITY: " />
+            <label ellipsize={3} maxWidthChars={10} label={createComputed(() => `${weather().visibility} km`)} />
+          </box>
+        </box>
+      </box>
+      <box orientation={Gtk.Orientation.VERTICAL}>
+        <label wrap xalign={0} class="section-header" label="5-DAY FORECAST" />
+        <box class="hr-line" />
+        <box class="forecast-header">
+          <label class="accent" label="Day" widthRequest={50} xalign={0} />
+          <label class="accent weather-col" label="Weather" widthRequest={100} xalign={0} />
+          <label class="accent" label="Temp" widthRequest={55} xalign={0} />
+          <label class="accent hmd-col" label="Hmd" widthRequest={50} xalign={0} />
+          <label class="accent" label="Wind" widthRequest={55} xalign={0} />
+          <label class="accent prec-col" label="Prec" widthRequest={55} xalign={0} />
+          <label class="accent" label="Rain%" xalign={1} hexpand />
+        </box>
+        <box class="hr-line" />
+        <For each={forecast}>
+          {(item) => (
+            <box>
+              <label ellipsize={3} maxWidthChars={5} label={item.day} widthRequest={50} xalign={0} />
+              <label class="gray2 weather-col" ellipsize={3} maxWidthChars={15} label={item.desc} widthRequest={100} xalign={0} />
+              <label ellipsize={3} maxWidthChars={8} label={`${item.temp}°C`} widthRequest={55} xalign={0} />
+              <label ellipsize={3} maxWidthChars={5} class="hmd-col" label={`${item.humidity}%`} widthRequest={50} xalign={0} />
+              <label ellipsize={3} maxWidthChars={8} label={`${item.wind}km/h`} widthRequest={55} xalign={0} />
+              <label ellipsize={3} maxWidthChars={6} class="prec-col" label={`${item.precip}mm`} widthRequest={55} xalign={0} />
+              <label ellipsize={3} maxWidthChars={5} label={`${item.pop}%`} xalign={1} hexpand />
+            </box>
+          )}
+        </For>
+      </box>
+      <box class="hr-line" />
+      <label ellipsize={3} maxWidthChars={30} class="green" label={createComputed(() => `Last Update: ${weather().updateTime}`)} xalign={0} />
+    </box>
   )
 }

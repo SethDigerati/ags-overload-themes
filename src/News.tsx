@@ -1,11 +1,8 @@
-import app from "ags/gtk4/app"
-import { Astal, Gtk, Gdk } from "ags/gtk4"
+import { Gtk } from "ags/gtk4"
 import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
 import { env } from "../config"
-
-const { BOTTOM, LEFT } = Astal.WindowAnchor
 const API_KEY = env.NEWS_API_KEY || ""
 const API_SOURCE = "FreeNewsApi.io"
 
@@ -83,28 +80,26 @@ async function initAll() {
 }
 initAll()
 
-export default function NewsWidget() {
+export function NewsBox() {
   return (
-    <window visible name="news" class="News" anchor={BOTTOM | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-        <label wrap xalign={0} class="section-header" label="NEWS" />
-        <box class="hr-line" />
-        <label wrap ellipsize={3} maxWidthChars={30} class="gray3" label={`SOURCE : ${API_SOURCE}`} xalign={0} />
-        <For each={items}>
-          {(item) =>
-            item.type === "header"
-              ? <label wrap ellipsize={3} maxWidthChars={30} class="accent" xalign={0.5} label={item.label} />
-              : <box orientation={Gtk.Orientation.VERTICAL}>
-                  <box>
-                    <label xalign={0} maxWidthChars={50} useMarkup class="gray1" label={`<b>[${esc(item.source)}]</b>`} />
-                    <box hexpand valign={Gtk.Align.CENTER} class="hr-inline" />
-                    <label ellipsize={3} maxWidthChars={8} class="gray3" label={`[${item.time}]`} />
-                  </box>
-                  <label wrap maxWidthChars={50} class="gray1" xalign={0} label={item.title} />
+    <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
+      <label wrap xalign={0} class="section-header" label="NEWS" />
+      <box class="hr-line" />
+      <label wrap ellipsize={3} maxWidthChars={30} class="gray3" label={`SOURCE : ${API_SOURCE}`} xalign={0} />
+      <For each={items}>
+        {(item) =>
+          item.type === "header"
+            ? <label wrap ellipsize={3} maxWidthChars={30} class="accent" xalign={0.5} label={item.label} />
+            : <box orientation={Gtk.Orientation.VERTICAL}>
+                <box>
+                  <label xalign={0} maxWidthChars={50} useMarkup class="gray1" label={`<b>[${esc(item.source)}]</b>`} />
+                  <box hexpand valign={Gtk.Align.CENTER} class="hr-inline" />
+                  <label ellipsize={3} maxWidthChars={8} class="gray3" label={`[${item.time}]`} />
                 </box>
-          }
-        </For>
-      </box>
-    </window>
+                <label wrap maxWidthChars={50} class="gray1" xalign={0} label={item.title} />
+              </box>
+        }
+      </For>
+    </box>
   )
 }

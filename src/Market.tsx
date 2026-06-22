@@ -1,11 +1,8 @@
-import app from "ags/gtk4/app"
-import { Astal, Gtk, Gdk } from "ags/gtk4"
+import { Gtk } from "ags/gtk4"
 import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
 import { env } from "../config"
-
-const { TOP, LEFT } = Astal.WindowAnchor
 
 const coinIds = ["bitcoin", "ethereum", "solana", "ripple", "dogecoin", "cardano", "binancecoin", "tron", "avalanche-2", "chainlink", "polkadot", "litecoin"]
 const coinNames = ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "TRX", "AVAX", "LINK", "DOT", "LTC"]
@@ -136,53 +133,51 @@ function Cell({ val }: { val: string }) {
   )
 }
 
-export default function MarketWidget() {
+export function MarketBox() {
   return (
-    <window visible name="market" class="Market" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-        <label wrap xalign={0} class="section-header" label="MARKET" />
-        <box class="hr-line" />
-        <box spacing={5}>
-          <label wrap class="accent" label="ASSET" xalign={0} widthRequest={50} />
-          <box widthRequest={60} spacing={0}>
-            <box widthRequest={12} />
-            <label wrap class="accent" label="1h" xalign={0} />
-          </box>
-          <box widthRequest={60} spacing={0}>
-            <box widthRequest={12} />
-            <label wrap class="accent" label="1d" xalign={0} />
-          </box>
-          <box widthRequest={60} spacing={0}>
-            <box widthRequest={12} />
-            <label wrap class="accent" label="1w" xalign={0} />
-          </box>
-          <box widthRequest={60} spacing={0}>
-            <box widthRequest={12} />
-            <label wrap class="accent" label="1m" xalign={0} />
-          </box>
-          <box widthRequest={60} spacing={0}>
-            <box widthRequest={12} />
-            <label wrap class="accent" label="1y" xalign={0} />
-          </box>
+    <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
+      <label wrap xalign={0} class="section-header" label="MARKET" />
+      <box class="hr-line" />
+      <box spacing={5}>
+        <label wrap class="accent" label="ASSET" xalign={0} widthRequest={50} />
+        <box widthRequest={60} spacing={0}>
+          <box widthRequest={12} />
+          <label wrap class="accent" label="1h" xalign={0} />
         </box>
-        <box class="hr-line" />
-        <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-          <For each={assets}>
-            {(item) => (
-              <box widthRequest={399} spacing={5}>
-                <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="gray2" label={item.name} widthRequest={50} />
-                <Cell val={item.pct1h} />
-                <Cell val={item.pct1d} />
-                <Cell val={item.pct1w} />
-                <Cell val={item.pct1m} />
-                <Cell val={item.pct1y} />
-              </box>
-            )}
-          </For>
+        <box widthRequest={60} spacing={0}>
+          <box widthRequest={12} />
+          <label wrap class="accent" label="1d" xalign={0} />
         </box>
-        <box class="hr-line" />
-        <label ellipsize={3} maxWidthChars={40} wrap class="gray3" label={createComputed(() => forex())} xalign={0.5} />
+        <box widthRequest={60} spacing={0}>
+          <box widthRequest={12} />
+          <label wrap class="accent" label="1w" xalign={0} />
+        </box>
+        <box widthRequest={60} spacing={0}>
+          <box widthRequest={12} />
+          <label wrap class="accent" label="1m" xalign={0} />
+        </box>
+        <box widthRequest={60} spacing={0}>
+          <box widthRequest={12} />
+          <label wrap class="accent" label="1y" xalign={0} />
+        </box>
       </box>
-    </window>
+      <box class="hr-line" />
+      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
+        <For each={assets}>
+          {(item) => (
+            <box widthRequest={399} spacing={5}>
+              <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="gray2" label={item.name} widthRequest={50} />
+              <Cell val={item.pct1h} />
+              <Cell val={item.pct1d} />
+              <Cell val={item.pct1w} />
+              <Cell val={item.pct1m} />
+              <Cell val={item.pct1y} />
+            </box>
+          )}
+        </For>
+      </box>
+      <box class="hr-line" />
+      <label ellipsize={3} maxWidthChars={40} wrap class="gray3" label={createComputed(() => forex())} xalign={0.5} />
+    </box>
   )
 }

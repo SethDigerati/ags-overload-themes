@@ -1,5 +1,4 @@
-import app from "ags/gtk4/app"
-import { Astal, Gtk, Gdk } from "ags/gtk4"
+import { Gtk } from "ags/gtk4"
 import { createComputed } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
@@ -11,8 +10,6 @@ import {
   setNetISP,
   formatSpeed,
 } from "../data"
-
-const { TOP, RIGHT } = Astal.WindowAnchor
 
 const netLabels = [
   "Status : ", "SSID : ", "Bitrate : ", "ISP : ", "Latency : ", "Loss : ",
@@ -35,102 +32,89 @@ async function fetchISP() {
 interval(600000, () => fetchISP().catch((e) => console.error("isp poll:", e)))
 fetchISP().catch((e) => console.error("isp init:", e))
 
-export default function Network() {
+export function NetworkBox() {
   return (
-    <window
-      visible
-      name="network"
-      class="Network"
-      anchor={TOP | RIGHT}
-      marginTop={10}
-      marginLeft={0}
-      widthRequest={399}
-      exclusivity={Astal.Exclusivity.NORMAL}
-      application={app}
-      resizable={false}
-    >
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-        <label wrap xalign={0} ellipsize={3} maxWidthChars={50} class="section-header" label={createComputed(() => `NETWORK(${netIface()})`)} />
-        <box class="hr-line" />
-        <box>
-          <label class="accent" label="Status : " widthRequest={netFieldWidth} xalign={1} />
-          <label ellipsize={3} maxWidthChars={50} wrap hexpand xalign={0}
-            label={createComputed(() => netStatus())}
-            cssClasses={createComputed(() => [netStatus() === "ONLINE" ? "positive" : "negative"])} />
-        </box>
-        <box>
-          <label class="accent" xalign={1} widthRequest={netFieldWidth} label="SSID : " />
-          <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
-            label={createComputed(() => netSSID())} />
-        </box>
-        <box>
-          <label class="accent" xalign={1} widthRequest={netFieldWidth} label="ISP : " />
-          <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
-            label={createComputed(() => netISP())} />
-        </box>
-        <box>
-          <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Bitrate : " />
-          <label ellipsize={3} maxWidthChars={12} wrap class="gray2" xalign={0}
-            label={createComputed(() => netBitrate())} />
-          <label hexpand />
-          <label class="accent" label="Signal : " xalign={1} />
-          <label ellipsize={3} maxWidthChars={6} wrap class="gray2" xalign={0}
-            label={createComputed(() => netSignal())} />
-        </box>
-        <box>
-          <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Latency : " />
-          <label class="gray2" label="(8.8.8.8)" xalign={0} />
-          <label hexpand />
-          <label ellipsize={3} maxWidthChars={30} wrap class="gray2" xalign={1}
-            label={createComputed(() => netLatency())} />
-        </box>
-        <box>
-          <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Loss : " />
-          <label ellipsize={3} maxWidthChars={6} wrap class="gray2" xalign={0}
-            label={createComputed(() => `${netLoss()}%`)} />
-          <label hexpand />
-          <label class="accent" label="Jitter : " xalign={1} />
-          <label ellipsize={3} maxWidthChars={10} wrap class="gray2" xalign={0}
-            label={createComputed(() => `${netJitter()}ms`)} />
-        </box>
-        <box>
-          <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Connections : " />
-          <label ellipsize={3} maxWidthChars={6} wrap class="gray2" xalign={0}
-            label={createComputed(() => netConnections())} />
-          <label hexpand />
-          <label class="accent" label="Inbound : " xalign={0} />
-          <label ellipsize={3} maxWidthChars={6} wrap class="gray2" xalign={0}
-            label={createComputed(() => netInbound())} />
-          <label hexpand />
-          <label class="accent" label="Outbound : " xalign={1} />
-          <label ellipsize={3} maxWidthChars={6} wrap class="gray2" xalign={0}
-            label={createComputed(() => netOutbound())} />
-        </box>
-        <box>
-          <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Total DL : " />
-          <label ellipsize={3} maxWidthChars={12} wrap class="gray2" xalign={0}
-            label={createComputed(() => netDownTotal())} />
-          <label hexpand />
-          <label class="accent" label="Total UL : " xalign={1} />
-          <label ellipsize={3} maxWidthChars={12} wrap class="gray2" xalign={0}
-            label={createComputed(() => netUpTotal())} />
-        </box>
-        <box>
-          <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Down : " />
-          <label ellipsize={3} maxWidthChars={20} wrap class="gray2" xalign={0} hexpand
-            label={createComputed(() => formatSpeed(netDownSpeed()))} />
-        </box>
-        <box>
-          <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Up : " />
-          <label ellipsize={3} maxWidthChars={20} wrap class="gray2" xalign={0} hexpand
-            label={createComputed(() => formatSpeed(netUpSpeed()))} />
-        </box>
-        <box>
-          <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Local IP : " />
-          <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
-            label={createComputed(() => netLocalIp())} />
-        </box>
+    <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
+      <label wrap xalign={0} ellipsize={3} maxWidthChars={50} class="section-header" label={createComputed(() => `NETWORK(${netIface()})`)} />
+      <box class="hr-line" />
+      <box>
+        <label class="accent" label="Status : " widthRequest={netFieldWidth} xalign={1} />
+        <label ellipsize={3} maxWidthChars={50} wrap hexpand xalign={0}
+          label={createComputed(() => netStatus())}
+          cssClasses={createComputed(() => [netStatus() === "ONLINE" ? "positive" : "negative"])} />
       </box>
-    </window>
+      <box>
+        <label class="accent" xalign={1} widthRequest={netFieldWidth} label="SSID : " />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
+          label={createComputed(() => netSSID())} />
+      </box>
+      <box>
+        <label class="accent" xalign={1} widthRequest={netFieldWidth} label="ISP : " />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
+          label={createComputed(() => netISP())} />
+      </box>
+      <box>
+        <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Bitrate : " />
+        <label ellipsize={3} maxWidthChars={12} wrap class="gray2" xalign={0}
+          label={createComputed(() => netBitrate())} />
+        <label hexpand />
+        <label class="accent" label="Signal : " xalign={1} />
+        <label ellipsize={3} maxWidthChars={6} wrap class="gray2" xalign={0}
+          label={createComputed(() => netSignal())} />
+      </box>
+      <box>
+        <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Latency : " />
+        <label class="gray2" label="(8.8.8.8)" xalign={0} />
+        <label hexpand />
+        <label ellipsize={3} maxWidthChars={30} wrap class="gray2" xalign={1}
+          label={createComputed(() => netLatency())} />
+      </box>
+      <box>
+        <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Loss : " />
+        <label ellipsize={3} maxWidthChars={6} wrap class="gray2" xalign={0}
+          label={createComputed(() => `${netLoss()}%`)} />
+        <label hexpand />
+        <label class="accent" label="Jitter : " xalign={1} />
+        <label ellipsize={3} maxWidthChars={10} wrap class="gray2" xalign={0}
+          label={createComputed(() => `${netJitter()}ms`)} />
+      </box>
+      <box>
+        <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Connections : " />
+        <label ellipsize={3} maxWidthChars={6} wrap class="gray2" xalign={0}
+          label={createComputed(() => netConnections())} />
+        <label hexpand />
+        <label class="accent" label="Inbound : " xalign={0} />
+        <label ellipsize={3} maxWidthChars={6} wrap class="gray2" xalign={0}
+          label={createComputed(() => netInbound())} />
+        <label hexpand />
+        <label class="accent" label="Outbound : " xalign={1} />
+        <label ellipsize={3} maxWidthChars={6} wrap class="gray2" xalign={0}
+          label={createComputed(() => netOutbound())} />
+      </box>
+      <box>
+        <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Total DL : " />
+        <label ellipsize={3} maxWidthChars={12} wrap class="gray2" xalign={0}
+          label={createComputed(() => netDownTotal())} />
+        <label hexpand />
+        <label class="accent" label="Total UL : " xalign={1} />
+        <label ellipsize={3} maxWidthChars={12} wrap class="gray2" xalign={0}
+          label={createComputed(() => netUpTotal())} />
+      </box>
+      <box>
+        <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Down : " />
+        <label ellipsize={3} maxWidthChars={20} wrap class="gray2" xalign={0} hexpand
+          label={createComputed(() => formatSpeed(netDownSpeed()))} />
+      </box>
+      <box>
+        <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Up : " />
+        <label ellipsize={3} maxWidthChars={20} wrap class="gray2" xalign={0} hexpand
+          label={createComputed(() => formatSpeed(netUpSpeed()))} />
+      </box>
+      <box>
+        <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Local IP : " />
+        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
+          label={createComputed(() => netLocalIp())} />
+      </box>
+    </box>
   )
 }

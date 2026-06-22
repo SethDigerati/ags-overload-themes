@@ -8,43 +8,11 @@ window {
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
 }
 
-window.System {
+window.RightColumn {
   margin-top: 10px;
 }
 
-window.Cpu {
-  margin-top: 150px;
-}
-
-window.Quote {
-  margin-bottom: 10px;
-}
-
-window.Gpu {
-  margin-top: 1020px;
-}
-
-window.Memory {
-  margin-top: 400px;
-}
-
-window.Network {
-  margin-top: 830px;
-}
-
-window.Weather {
-  margin-top: 10px;
-}
-
-window.LastFm {
-  margin-top: 350px;
-}
-
-window.Market {
-  margin-top: 660px;
-}
-
-window.News {
+window.LeftColumn {
   margin-top: 10px;
 }
 
