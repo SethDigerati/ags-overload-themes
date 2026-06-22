@@ -28,6 +28,8 @@ export const [topMemProcs, setTopMemProcs] = createState<Array<{ name: string; p
 export const [cpuGraphData, setCpuGraphData] = createState<number[]>([])
 export const [netDownGraphData, setNetDownGraphData] = createState<number[]>([])
 export const [netUpGraphData, setNetUpGraphData] = createState<number[]>([])
+export const [diskReadGraphData, setDiskReadGraphData] = createState<number[]>([])
+export const [diskWriteGraphData, setDiskWriteGraphData] = createState<number[]>([])
 
 export const [memPerc, setMemPerc] = createState(0)
 export const [memUsed, setMemUsed] = createState("0")
@@ -95,8 +97,11 @@ const NCPUS = parseInt(run("nproc")) || 1
 const cpuGraphBuf: number[] = []
 const netDownGraphBuf: number[] = []
 const netUpGraphBuf: number[] = []
+const diskReadGraphBuf: number[] = []
+const diskWriteGraphBuf: number[] = []
 const MAX_GRAPH = 60
 function pushGraphBuf(buf: number[], val: number, setter: (v: number[]) => void) {
+  if (buf.length === 0 && val === 0) return
   buf.push(val)
   if (buf.length > MAX_GRAPH) buf.shift()
   setter([...buf])
@@ -320,7 +325,7 @@ function collectDisk() {
       const p = l.trim().split(/\s+/)
       if (p.length >= 14 && p[2] !== "loop" && !p[2].startsWith("ram") && !p[2].startsWith("zram") && /^[a-z]/.test(p[2])) {
         const r = parseInt(p[5]) || 0; const w = parseInt(p[9]) || 0
-        if (_prevDiskRead === 0) { _prevDiskRead = r; _prevDiskWrite = w; continue }
+        if (_prevDiskRead === 0) { _prevDiskRead = r; _prevDiskWrite = w; break }
         setDiskReadSpeed(Math.max(0, Math.round((r - _prevDiskRead) * 512 / 1024)))
         setDiskWriteSpeed(Math.max(0, Math.round((w - _prevDiskWrite) * 512 / 1024)))
         _prevDiskRead = r; _prevDiskWrite = w; break
@@ -432,6 +437,8 @@ function updateAll() {
     pushGraphBuf(netUpGraphBuf, netUpSpeed(), setNetUpGraphData)
     collectNetConns()
     collectDisk()
+    pushGraphBuf(diskReadGraphBuf, diskReadSpeed(), setDiskReadGraphData)
+    pushGraphBuf(diskWriteGraphBuf, diskWriteSpeed(), setDiskWriteGraphData)
     collectTopProcs()
     collectTopMemProcs()
   } catch (e) { console.error("data update:", e) }
