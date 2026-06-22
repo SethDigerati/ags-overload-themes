@@ -23,6 +23,7 @@ export const [cpuTemp, setCpuTemp] = createState("N/A")
 export const [corePercs, setCorePercs] = createState<number[]>([])
 export const [coreBars, setCoreBars] = createState<{ idx: number; h: number; cls: string }[]>([])
 export const [coreRows, setCoreRows] = createState<{ idx: number; h: number; cls: string }[][]>([])
+export const [topProcs, setTopProcs] = createState<Array<{ name: string; pid: string; threads: string; cpu: string }>>([])
 
 export const [memPerc, setMemPerc] = createState(0)
 export const [memUsed, setMemUsed] = createState("0")
@@ -85,6 +86,7 @@ let prevCpuIdle = 0, prevCpuTotal = 0
 let prevCoreIdle: number[] = []
 let prevCoreTotal: number[] = []
 let _prevRx = 0, _prevTx = 0, _prevDiskRead = 0, _prevDiskWrite = 0
+const NCPUS = parseInt(run("nproc")) || 1
 
 function calcCpuPerc(): number {
   const stat = readSys("/proc/stat")
@@ -353,6 +355,20 @@ export function formatSpeed(kib: number): string {
   return Math.round(kib) + "KiB/s"
 }
 
+function collectTopProcs() {
+  const out = run("ps -eo pid,nlwp,%cpu,comm --sort=-%cpu --no-headers | head -5")
+  if (!out) return
+  const lines = out.split("\n").filter(l => l.trim())
+  setTopProcs(lines.map(line => {
+    const parts = line.trim().split(/\s+/)
+    const pid = parts[0]
+    const threads = parts[1]
+    const cpu = (parseFloat(parts[2]) / NCPUS).toFixed(1)
+    const name = parts.slice(3).join(" ") || "?"
+    return { pid: pid || "", name, threads: threads || "0", cpu: cpu || "0" }
+  }))
+}
+
 function updateAll() {
   try {
     const p = calcCpuPerc()
@@ -380,6 +396,7 @@ function updateAll() {
     collectNet()
     collectNetConns()
     collectDisk()
+    collectTopProcs()
   } catch (e) { console.error("data update:", e) }
 }
 
