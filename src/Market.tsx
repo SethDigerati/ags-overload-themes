@@ -2,11 +2,8 @@ import { Gtk } from "ags/gtk4"
 import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
-import { env } from "../config"
-
 const coinIds = ["bitcoin", "ethereum", "solana", "ripple", "dogecoin", "cardano", "binancecoin", "tron", "avalanche-2", "chainlink", "polkadot", "litecoin"]
 const coinNames = ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "TRX", "AVAX", "LINK", "DOT", "LTC"]
-
 const countryCurrency: Record<string, string> = {
   US: "USD", IN: "INR", GB: "GBP", JP: "JPY",
   DE: "EUR", FR: "EUR", IT: "EUR", ES: "EUR",
@@ -29,7 +26,6 @@ const countryCurrency: Record<string, string> = {
   LT: "EUR", LV: "EUR", EE: "EUR", SK: "EUR",
   SI: "EUR", CY: "EUR", MT: "EUR", LU: "EUR",
 }
-
 const currencySymbols: Record<string, string> = {
   USD: "$", INR: "₹", EUR: "€", JPY: "¥",
   GBP: "£", CAD: "C$", AUD: "A$", CHF: "Fr",
@@ -46,9 +42,7 @@ const currencySymbols: Record<string, string> = {
   PLN: "zł", CZK: "Kč", HUF: "Ft", DKK: "kr",
   ILS: "₪", PKR: "₨", BDT: "৳", NGN: "₦",
 }
-
 let locationCountry = ""
-
 async function fetchLocation() {
   try {
     const res = await fetch("https://ipinfo.io/country")
@@ -56,12 +50,10 @@ async function fetchLocation() {
     if (text) locationCountry = text.trim()
   } catch {}
 }
-
 const [assets, setAssets] = createState<Array<{ name: string; cur: string; pct1h: string; pct1d: string; pct1w: string; pct1m: string; pct1y: string }>>(
   coinNames.slice(0, 6).map((n) => ({ name: n, cur: "...", pct1h: "0", pct1d: "0", pct1w: "0", pct1m: "0", pct1y: "0" }))
 )
 const [forex, setForex] = createState("")
-
 async function fetchMarket() {
   try {
     const res = await fetch(
@@ -82,7 +74,6 @@ async function fetchMarket() {
     setAssets(updated.slice(0, 6))
     console.log("market: got", Math.min(updated.length, 6), "coins")
   } catch (e) { console.error("market fetch:", e) }
-
   try {
     const res = await fetch("https://open.er-api.com/v6/latest/USD")
     const data = await res.json()
@@ -107,10 +98,8 @@ async function fetchMarket() {
     setForex(parts.length > 0 ? parts.join("") : "...")
   } catch (e) { console.error("market forex:", e) }
 }
-
 interval(240000, () => fetchMarket().catch((e) => console.error("market poll:", e)))
 fetchLocation().then(() => fetchMarket().catch((e) => console.error("market init:", e)))
-
 function Cell({ val }: { val: string }) {
   const n = parseFloat(val)
   if (n > 0) return (
@@ -132,7 +121,6 @@ function Cell({ val }: { val: string }) {
     </box>
   )
 }
-
 export function MarketBox() {
   return (
     <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>

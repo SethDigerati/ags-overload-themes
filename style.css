@@ -121,15 +121,9 @@ box.cpu-red {
   background: #FF0000;
 }
 
-picture {
-  border-radius: 4px;
-}
-
 .cover-img {
   padding: 2px;
 }
-
-
 
 label.weather-desc {
   color: #FFFFFF;
@@ -153,7 +147,6 @@ image.weather-icon {
 box.weather-row {
   margin-top: -30px;
 }
-
 
 label.weather-temp {
   font-size: 25pt;
@@ -200,4 +193,3 @@ drawingarea.cpu-graph {
   margin-bottom: 5px;
 }
 
-/*# sourceMappingURL=style.css.map */
