@@ -60,4 +60,4 @@ export const graphs = {
 export const defaultInterface = "wlan0"
 
 export const rightColumnWidgets = ["SystemBox", "CpuBox", "MemoryBox", "GpuBox"]
-export const leftColumnWidgets = ["NetworkBox", "LastFmBox", "WeatherBox", "MarketBox", "QuoteBox"]
+export const leftColumnWidgets = ["NetworkBox", "LastFmBox", "WeatherBox", "MarketBox", "QuoteBox",]
