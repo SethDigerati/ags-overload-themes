@@ -83,18 +83,20 @@ export const [batteryStatus, setBatteryStatus] = createState("N/A")
 export const [batteryTech, setBatteryTech] = createState("N/A")
 export const [batteryEnergy, setBatteryEnergy] = createState("N/A")
 export const [batteryEnergyFull, setBatteryEnergyFull] = createState("N/A")
-export const [batteryEnergyDesign, setBatteryEnergyDesign] = createState("N/A")
 export const [batteryTime, setBatteryTime] = createState("N/A")
 
 export const [kernel, setKernel] = createState("N/A")
 export const [uptime, setUptime] = createState("N/A")
-export const [nodename, setNodename] = createState("")
 
 let prevCpuIdle = 0, prevCpuTotal = 0
 let prevCoreIdle: number[] = []
 let prevCoreTotal: number[] = []
 let _prevRx = 0, _prevTx = 0, _prevDiskRead = 0, _prevDiskWrite = 0
 const NCPUS = parseInt(run("nproc")) || 1
+let _batteryPath = ""
+let _card = ""
+let _vendor = ""
+const _thermalTypes: string[] = []
 
 const cpuGraphBuf: number[] = INIT_GRAPH()
 const netDownGraphBuf: number[] = INIT_GRAPH()
@@ -107,8 +109,7 @@ function pushGraphBuf(buf: number[], val: number, setter: (v: number[]) => void)
   setter([...buf])
 }
 
-function calcCpuPerc(): number {
-  const stat = readSys("/proc/stat")
+function calcCpuPerc(stat: string): number {
   if (!stat) return 0
   const parts = stat.split("\n")[0].trim().split(/\s+/)
   const vals = parts.slice(1).map(Number)
@@ -122,8 +123,7 @@ function calcCpuPerc(): number {
   return dTotal ? Math.round((1 - dIdle / dTotal) * 100) : 0
 }
 
-function calcCorePercs(): number[] {
-  const stat = readSys("/proc/stat")
+function calcCorePercs(stat: string): number[] {
   if (!stat) return []
   const cores: number[] = []
   const idle: number[] = []
@@ -137,17 +137,14 @@ function calcCorePercs(): number[] {
     }
   }
   if (prevCoreIdle.length === 0 || prevCoreTotal.length === 0 || prevCoreIdle.length !== idle.length) {
-    prevCoreIdle = idle
-    prevCoreTotal = total
-    return idle.map(() => 0)
+    prevCoreIdle = idle; prevCoreTotal = total; return idle.map(() => 0)
   }
   for (let i = 0; i < idle.length; i++) {
     const dIdle = idle[i] - prevCoreIdle[i]
     const dTotal = total[i] - prevCoreTotal[i]
     cores.push(dTotal ? Math.round((1 - dIdle / dTotal) * 100) : 0)
   }
-  prevCoreIdle = idle
-  prevCoreTotal = total
+  prevCoreIdle = idle; prevCoreTotal = total
   return cores
 }
 
@@ -188,63 +185,34 @@ function findDrmCard(): string {
 }
 
 function collectGpu() {
-  const card = findDrmCard()
-  if (!card) return
-  const vendor = readSys(`${card}/device/vendor`)
-  if (!vendor) return
-  const name = run("lspci 2>/dev/null | grep -i vga | head -1 | sed 's/.*://' | sed 's/(.*//'").trim()
-  if (name) setGpuModel(name)
-  const drv = run("ls -d /sys/bus/pci/drivers/*/ 2>/dev/null | grep -E 'i915|amdgpu|nouveau|nvidia' | head -1 | xargs basename 2>/dev/null").trim()
-  if (drv) setGpuDriver(drv)
-  if (vendor === "0x8086") { setGpuType("Integrated")
-    const mem = run("lspci -v -s $(lspci 2>/dev/null | grep -i vga | head -1 | cut -d' ' -f1) 2>/dev/null | grep 'prefetchable' | head -1 | sed 's/.*\\[size=//;s/\\].*//'").trim()
-    if (mem) { setGpuMemUsed("N/A"); setGpuMemTotal(mem) }
-    else { setGpuMemUsed("N/A"); setGpuMemTotal("N/A") }
-  }
-  else if (vendor === "0x10de") { setGpuType("Discrete")
+  if (!_card) return
+  const cur = readSys(`${_card}/gt_cur_freq_mhz`) || readSys(`${_card}/gt_act_freq_mhz`) || ""
+  if (cur) setGpuFreqCur(cur.trim())
+  if (_vendor === "0x10de") {
     const smi = run("nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null").trim()
     const m = smi.match(/([\d.]+),\s*([\d.]+)/)
     if (m) { setGpuMemUsed(m[1]); setGpuMemTotal(m[2]) }
+  } else if (_vendor === "0x1002") {
+    const vramUsed = readSys(`${_card}/device/mem_info_vram_used`)
+    if (vramUsed) setGpuMemUsed(String(Math.round(parseInt(vramUsed) / 1048576)))
   }
-  else if (vendor === "0x1002") { setGpuType("Discrete")
-    const vramUsed = readSys(`${card}/device/mem_info_vram_used`)
-    const vramTotal = readSys(`${card}/device/mem_info_vram_total`)
-    if (vramUsed && vramTotal) {
-      setGpuMemUsed(String(Math.round(parseInt(vramUsed) / 1048576)))
-      setGpuMemTotal(String(Math.round(parseInt(vramTotal) / 1048576)))
-    }
-  }
-  const cur = readSys(`${card}/gt_cur_freq_mhz`) || readSys(`${card}/gt_act_freq_mhz`) || ""
-  const max = readSys(`${card}/gt_max_freq_mhz`) || readSys(`${card}/gt_RP0_freq_mhz`) || ""
-  if (cur) setGpuFreqCur(cur.trim())
-  if (max) setGpuFreqMax(max.trim())
   const tz = run("for z in /sys/class/thermal/thermal_zone*; do [ -f $z/type ] && grep -qE 'amdgpu|i915|nouveau|nvidia|x86_pkg_temp' $z/type 2>/dev/null && cat $z/temp; done 2>/dev/null").trim()
   if (tz) { const t = parseFloat(tz.split("\n")[0]) / 1000; setGpuTemp(String(Math.round(t))) }
 }
 
 function collectBattery() {
-  const b = findBattery()
-  if (!b) { setBatteryPerc(-1); return }
-  setBatteryTech(readSys(`${b}/technology`) || "N/A")
-  setBatteryStatus(readSys(`${b}/status`) || "N/A")
-  const now = readSys(`${b}/energy_now`) || readSys(`${b}/charge_now`) || "0"
-  const full = readSys(`${b}/energy_full`) || readSys(`${b}/charge_full`) || "1"
-  const design = readSys(`${b}/energy_full_design`) || readSys(`${b}/charge_full_design`) || "0"
+  if (!_batteryPath) { setBatteryPerc(-1); return }
+  setBatteryStatus(readSys(`${_batteryPath}/status`) || "N/A")
+  const now = readSys(`${_batteryPath}/energy_now`) || readSys(`${_batteryPath}/charge_now`) || "0"
   setBatteryEnergy((parseInt(now) / 1000000).toFixed(2))
-  setBatteryEnergyFull((parseInt(full) / 1000000).toFixed(2))
-  setBatteryEnergyDesign((parseInt(design) / 1000000).toFixed(2))
-  setBatteryPerc(Math.round((parseInt(now) / parseInt(full)) * 100))
-  const pwr = parseInt(readSys(`${b}/power_now`) || "0")
+  setBatteryPerc(Math.round((parseInt(now) / parseFloat(batteryEnergyFull())) * 100))
+  const pwr = parseInt(readSys(`${_batteryPath}/power_now`) || "0")
   if (pwr > 0) { const h = parseInt(now) / pwr; setBatteryTime(`${Math.floor(h)}h ${Math.round((h % 1) * 60)}m`) }
 }
 
 function collectNet() {
   const iface = netIface()
   setNetStatus(readSys(`/sys/class/net/${iface}/operstate`) === "up" ? "ONLINE" : "OFFLINE")
-  const ssid = run(`iwgetid -r ${iface} 2>/dev/null`).trim()
-  if (ssid) setNetSSID(ssid)
-  const bitrate = run(`iwconfig ${iface} 2>/dev/null | grep -o 'Bit Rate[=:][0-9.]*' | grep -o '[0-9.]*'`).trim()
-  if (bitrate) setNetBitrate(bitrate + " Mb/s")
   const dev = readSys("/proc/net/dev")
   if (!dev) return
   for (const l of dev.split("\n")) {
@@ -271,6 +239,14 @@ function collectNet() {
       break
     }
   }
+}
+
+function collectNetInfo() {
+  const iface = netIface()
+  const ssid = run(`iwgetid -r ${iface} 2>/dev/null`).trim()
+  if (ssid) setNetSSID(ssid)
+  const bitrate = run(`iwconfig ${iface} 2>/dev/null | grep -o 'Bit Rate[=:][0-9.]*' | grep -o '[0-9.]*'`).trim()
+  if (bitrate) setNetBitrate(bitrate + " Mb/s")
   setNetLocalIp(run(`ip -4 addr show ${iface} 2>/dev/null | grep inet | awk '{print $2}' | cut -d/ -f1`).trim() || "N/A")
 }
 
@@ -313,12 +289,7 @@ function collectNetPing() {
   }
 }
 
-function collectDisk() {
-  const df = run("df -h / 2>/dev/null | tail -1").trim()
-  if (df) {
-    const p = df.split(/\s+/)
-    if (p.length >= 6) { setDiskTotal(p[1]); setDiskUsed(p[2]); setDiskFree(p[3]); setDiskPerc(parseInt(p[4].replace("%", "")) || 0) }
-  }
+function collectDiskSpeeds() {
   const stat = readSys("/proc/diskstats")
   if (stat) {
     for (const l of stat.split("\n")) {
@@ -332,33 +303,30 @@ function collectDisk() {
       }
     }
   }
-  setStorageDevices(run(`lsblk -ro NAME,SIZE,TYPE,MOUNTPOINTS 2>/dev/null | awk 'function d(n){r="";for(i=1;i<=n;i++)r=r"-";return r} $3=="disk"||$3=="rom"{n="->"$1;n=n d(17-length(n));print n"("$2")"} $3=="part"{mnt=$4;if(length(mnt)>20)mnt=substr(mnt,1,17)"...";n="  \\u2514--"$1;n=n d(17-length(n));l=n"("$2")";if(mnt){p=d(27-length(l));print l p"--" mnt}else print l}'`).trim())
+}
+
+function collectDiskUsage() {
+  const df = run("df -h / 2>/dev/null | tail -1").trim()
+  if (df) {
+    const p = df.split(/\s+/)
+    if (p.length >= 6) { setDiskTotal(p[1]); setDiskUsed(p[2]); setDiskFree(p[3]); setDiskPerc(parseInt(p[4].replace("%", "")) || 0) }
+  }
 }
 
 function collectSys() {
   const ut = readSys("/proc/uptime")
   if (ut) { const s = parseInt(ut.split(" ")[0]); const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60); setUptime(d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m`) }
-  setKernel(run("uname -sr").trim())
-  setNodename(readSys("/proc/sys/kernel/hostname") || run("hostname").trim() || "")
-  setCpuModel(run("grep 'model name' /proc/cpuinfo | head -1 | sed 's/.*: //'").trim() || "N/A")
-  const f = readSys("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
-  if (f) setCpuFreq((parseInt(f) / 1000000).toFixed(1) + "GHz")
-  const mf = readSys("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
-  if (mf) setCpuMaxFreq((parseInt(mf) / 1000000).toFixed(1) + "GHz")
-  const l = readSys("/proc/loadavg")
-  if (l) setCpuLoads(l.split(" ").slice(0, 3).join(" "))
 }
 
 function collectTemps() {
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < _thermalTypes.length; i++) {
     const raw = readSys(`/sys/class/thermal/thermal_zone${i}/temp`)
-    const typ = readSys(`/sys/class/thermal/thermal_zone${i}/type`)
-    if (raw && typ) {
+    if (raw) {
       const t = parseFloat(raw) / 1000
-      const tl = typ.trim().toLowerCase()
+      const tl = _thermalTypes[i]
       if (tl.includes("x86_pkg") || tl.includes("cpu")) setCpuTemp(String(Math.round(t)))
       else if (tl.includes("acpitz")) { if (cpuTemp() === "N/A") setCpuTemp(String(Math.round(t))) }
-    } else break
+    }
   }
 }
 
@@ -407,17 +375,17 @@ function collectTopMemProcs() {
   }))
 }
 
-function updateAll() {
+function fastUpdate() {
   try {
-    const p = calcCpuPerc()
+    const stat = readSys("/proc/stat")
+    const p = calcCpuPerc(stat)
     setCpuPerc(p)
     pushGraphBuf(cpuGraphBuf, p, setCpuGraphData)
     setCpuPercNorm(p / 100)
-    const cores = calcCorePercs()
+    const cores = calcCorePercs(stat)
     setCorePercs(cores)
     const bars = cores.map((c, idx) => ({
-      idx,
-      h: Math.max(1, Math.round((c / 100) * 20)),
+      idx, h: Math.max(1, Math.round((c / 100) * 20)),
       cls: c >= 85 ? "cpu-yellow" : "cpu-white",
     }))
     setCoreBars(bars)
@@ -429,21 +397,87 @@ function updateAll() {
     setCoreRows(rows)
     collectSys()
     parseMem()
-    collectBattery()
-    collectTemps()
-    collectGpu()
     collectNet()
     pushGraphBuf(netDownGraphBuf, netDownSpeed(), setNetDownGraphData)
     pushGraphBuf(netUpGraphBuf, netUpSpeed(), setNetUpGraphData)
-    collectNetConns()
-    collectDisk()
+    collectDiskSpeeds()
     pushGraphBuf(diskReadGraphBuf, diskReadSpeed(), setDiskReadGraphData)
     pushGraphBuf(diskWriteGraphBuf, diskWriteSpeed(), setDiskWriteGraphData)
-    collectTopProcs()
-    collectTopMemProcs()
-  } catch (e) { console.error("data update:", e) }
+  } catch (e) { console.error("fast update:", e) }
 }
 
-interval(1000, updateAll)
+function slowUpdate() {
+  try {
+    collectBattery()
+    collectTemps()
+    collectGpu()
+    collectNetConns()
+    collectTopProcs()
+    collectTopMemProcs()
+    collectNetInfo()
+    const f = readSys("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
+    if (f) setCpuFreq((parseInt(f) / 1000000).toFixed(1) + "GHz")
+    const l = readSys("/proc/loadavg")
+    if (l) setCpuLoads(l.split(" ").slice(0, 3).join(" "))
+  } catch (e) { console.error("slow update:", e) }
+}
+
+function verySlowUpdate() {
+  try {
+    collectDiskUsage()
+  } catch (e) { console.error("very slow update:", e) }
+}
+
+// ── One-time hardware discovery ──
+{
+  const _bp = findBattery()
+  if (_bp) {
+    _batteryPath = _bp
+    setBatteryTech(readSys(`${_bp}/technology`) || "N/A")
+    const full = readSys(`${_bp}/energy_full`) || readSys(`${_bp}/charge_full`) || "1"
+    setBatteryEnergyFull((parseInt(full) / 1000000).toFixed(2))
+  }
+  setKernel(run("uname -sr").trim())
+  const cm = run("grep 'model name' /proc/cpuinfo | head -1 | sed 's/.*: //'").trim()
+  if (cm) setCpuModel(cm)
+  const mf = readSys("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
+  if (mf) setCpuMaxFreq((parseInt(mf) / 1000000).toFixed(1) + "GHz")
+  const c = findDrmCard()
+  if (c) {
+    _card = c
+    const v = readSys(`${c}/device/vendor`)
+    if (v) _vendor = v
+    const gn = run("lspci 2>/dev/null | grep -i vga | head -1 | sed 's/.*://' | sed 's/(.*//'").trim()
+    if (gn) setGpuModel(gn)
+    const drv = run("ls -d /sys/bus/pci/drivers/*/ 2>/dev/null | grep -E 'i915|amdgpu|nouveau|nvidia' | head -1 | xargs basename 2>/dev/null").trim()
+    if (drv) setGpuDriver(drv)
+    const mf2 = readSys(`${c}/gt_max_freq_mhz`) || readSys(`${c}/gt_RP0_freq_mhz`) || ""
+    if (mf2) setGpuFreqMax(mf2.trim())
+    if (_vendor === "0x8086") {
+      setGpuType("Integrated")
+      const mem = run("lspci -v -s $(lspci 2>/dev/null | grep -i vga | head -1 | cut -d' ' -f1) 2>/dev/null | grep 'prefetchable' | head -1 | sed 's/.*\\[size=//;s/\\].*//'").trim()
+      if (mem) { setGpuMemUsed("N/A"); setGpuMemTotal(mem) }
+      else { setGpuMemUsed("N/A"); setGpuMemTotal("N/A") }
+    } else if (_vendor === "0x10de") {
+      setGpuType("Discrete")
+    } else if (_vendor === "0x1002") {
+      setGpuType("Discrete")
+      const vt = readSys(`${c}/device/mem_info_vram_total`)
+      if (vt) setGpuMemTotal(String(Math.round(parseInt(vt) / 1048576)))
+    }
+  }
+  for (let i = 0; i < 10; i++) {
+    const typ = readSys(`/sys/class/thermal/thermal_zone${i}/type`)
+    if (!typ) break
+    _thermalTypes.push(typ.trim().toLowerCase())
+  }
+  setStorageDevices(run(`lsblk -ro NAME,SIZE,TYPE,MOUNTPOINTS 2>/dev/null | awk 'function d(n){r="";for(i=1;i<=n;i++)r=r"-";return r} $3=="disk"||$3=="rom"{n="->"$1;n=n d(17-length(n));print n"("$2")"} $3=="part"{mnt=$4;if(length(mnt)>20)mnt=substr(mnt,1,17)"...";n="  \\u2514--"$1;n=n d(17-length(n));l=n"("$2")";if(mnt){p=d(27-length(l));print l p"--" mnt}else print l}'`).trim())
+}
+
+interval(1000, fastUpdate)
+interval(5000, slowUpdate)
+interval(30000, verySlowUpdate)
 interval(PING_INTERVAL, collectNetPing)
-updateAll()
+fastUpdate()
+slowUpdate()
+verySlowUpdate()

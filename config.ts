@@ -31,7 +31,7 @@ export const margins = {
   bottomLeft: { marginBottom: 10, marginLeft: 0 },
 }
 
-export function loadEnv(): Record<string, string> {
+function loadEnv(): Record<string, string> {
   const content = readFile(`${projectRoot}/.env`)
   if (!content) return {}
   const env: Record<string, string> = {}

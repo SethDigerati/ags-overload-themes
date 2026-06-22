@@ -9,7 +9,6 @@ import { NetworkBox } from "./Network"
 import { WeatherBox } from "./Weather"
 import { LastFmBox } from "./LastFm"
 import { MarketBox } from "./Market"
-import { NewsBox } from "./News"
 import { QuoteBox } from "./Quote"
 
 const { TOP, RIGHT, LEFT } = Astal.WindowAnchor
@@ -17,7 +16,7 @@ const { TOP, RIGHT, LEFT } = Astal.WindowAnchor
 const widgetMap: Record<string, any> = {
   SystemBox, CpuBox, MemoryBox, GpuBox,
   NetworkBox, LastFmBox, WeatherBox,
-  MarketBox, QuoteBox, NewsBox,
+  MarketBox, QuoteBox,
 }
 
 export const RightCol = () => (
