@@ -25,6 +25,9 @@ export const [coreBars, setCoreBars] = createState<{ idx: number; h: number; cls
 export const [coreRows, setCoreRows] = createState<{ idx: number; h: number; cls: string }[][]>([])
 export const [topProcs, setTopProcs] = createState<Array<{ name: string; pid: string; threads: string; cpu: string }>>([])
 export const [topMemProcs, setTopMemProcs] = createState<Array<{ name: string; pid: string; vsize: string; size: string }>>([])
+export const [cpuGraphData, setCpuGraphData] = createState<number[]>([])
+export const [netDownGraphData, setNetDownGraphData] = createState<number[]>([])
+export const [netUpGraphData, setNetUpGraphData] = createState<number[]>([])
 
 export const [memPerc, setMemPerc] = createState(0)
 export const [memUsed, setMemUsed] = createState("0")
@@ -88,6 +91,16 @@ let prevCoreIdle: number[] = []
 let prevCoreTotal: number[] = []
 let _prevRx = 0, _prevTx = 0, _prevDiskRead = 0, _prevDiskWrite = 0
 const NCPUS = parseInt(run("nproc")) || 1
+
+const cpuGraphBuf: number[] = []
+const netDownGraphBuf: number[] = []
+const netUpGraphBuf: number[] = []
+const MAX_GRAPH = 60
+function pushGraphBuf(buf: number[], val: number, setter: (v: number[]) => void) {
+  buf.push(val)
+  if (buf.length > MAX_GRAPH) buf.shift()
+  setter([...buf])
+}
 
 function calcCpuPerc(): number {
   const stat = readSys("/proc/stat")
@@ -393,6 +406,7 @@ function updateAll() {
   try {
     const p = calcCpuPerc()
     setCpuPerc(p)
+    pushGraphBuf(cpuGraphBuf, p, setCpuGraphData)
     setCpuPercNorm(p / 100)
     const cores = calcCorePercs()
     setCorePercs(cores)
@@ -414,6 +428,8 @@ function updateAll() {
     collectTemps()
     collectGpu()
     collectNet()
+    pushGraphBuf(netDownGraphBuf, netDownSpeed(), setNetDownGraphData)
+    pushGraphBuf(netUpGraphBuf, netUpSpeed(), setNetUpGraphData)
     collectNetConns()
     collectDisk()
     collectTopProcs()

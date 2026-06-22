@@ -191,4 +191,13 @@ label.weather-col {
   margin-left: -10px;
 }
 
+drawingarea.graph {
+  margin-top: 4px;
+  margin-bottom: 4px;
+}
+
+drawingarea.cpu-graph {
+  margin-bottom: 5px;
+}
+
 /*# sourceMappingURL=style.css.map */
