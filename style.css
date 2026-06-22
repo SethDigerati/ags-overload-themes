@@ -104,10 +104,11 @@ label.clock-large {
   font-size: 18pt;
   font-weight: bold;
   color: #FFFFFF;
+  margin-top: -5px;
 }
 
 label.date-large {
-  font-size: 11pt;
+  font-size: 15pt;
   color: #EAEAEA;
 }
 

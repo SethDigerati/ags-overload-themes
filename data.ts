@@ -317,7 +317,7 @@ function collectDisk() {
 function collectSys() {
   const ut = readSys("/proc/uptime")
   if (ut) { const s = parseInt(ut.split(" ")[0]); const d = Math.floor(s / 86400); const h = Math.floor((s % 86400) / 3600); const m = Math.floor((s % 3600) / 60); setUptime(d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m`) }
-  setKernel(run("uname -r").trim())
+  setKernel(run("uname -sr").trim())
   setNodename(readSys("/proc/sys/kernel/hostname") || run("hostname").trim() || "")
   setCpuModel(run("grep 'model name' /proc/cpuinfo | head -1 | sed 's/.*: //'").trim() || "N/A")
   const f = readSys("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
