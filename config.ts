@@ -53,6 +53,8 @@ export const graphs = {
   cpu: true,
   networkDown: true,
   networkUp: true,
+  diskRead: true,
+  diskWrite: true,
 }
 
 export const defaultInterface = "wlan0"
