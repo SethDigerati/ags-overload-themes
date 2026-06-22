@@ -1,12 +1,10 @@
-import app from "ags/gtk4/app"
-import { Astal, Gtk, Gdk } from "ags/gtk4"
+import { Gtk } from "ags/gtk4"
 import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
 import { writeFile } from "./util"
 import { env } from "../config"
 
-const { TOP, LEFT } = Astal.WindowAnchor
 const API_KEY = env.LASTFM_API_KEY || ""
 const USERNAME = env.LASTFM_USERNAME || ""
 const DATA_DIR = "/tmp/ags/lastfm"
@@ -94,54 +92,52 @@ async function fetchLastfm() {
 interval(5000, () => fetchLastfm().catch((e) => console.error("lastfm poll:", e)))
 fetchLastfm().catch((e) => console.error("lastfm init:", e))
 
-export default function LastFmWidget() {
+export function LastFmBox() {
   return (
-    <window visible name="lastfm" class="LastFm" anchor={TOP | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-        <label wrap xalign={0} class="section-header" label="LAST.FM" />
-        <box class="hr-line" />
-        <label ellipsize={3} maxWidthChars={40} wrap class="accent" label={createComputed(() => nowPlaying())} xalign={0} />
-        <For each={tracks}>
-          {(item, idx) => (
-            <box orientation={Gtk.Orientation.VERTICAL}>
-              <box>
-                {item.image ? (
-                  <image class="cover-img" file={item.image} pixelSize={idx.peek() === 0 ? 100 : 80} />
-                ) : (
-                  <box class="cover-img" widthRequest={idx.peek() === 0 ? 100 : 80} heightRequest={idx.peek() === 0 ? 100 : 80} />
+    <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
+      <label wrap xalign={0} class="section-header" label="LAST.FM" />
+      <box class="hr-line" />
+      <label ellipsize={3} maxWidthChars={40} wrap class="accent" label={createComputed(() => nowPlaying())} xalign={0} />
+      <For each={tracks}>
+        {(item, idx) => (
+          <box orientation={Gtk.Orientation.VERTICAL}>
+            <box>
+              {item.image ? (
+                <image class="cover-img" file={item.image} pixelSize={idx.peek() === 0 ? 100 : 80} />
+              ) : (
+                <box class="cover-img" widthRequest={idx.peek() === 0 ? 100 : 80} heightRequest={idx.peek() === 0 ? 100 : 80} />
+              )}
+              <box class="track-details" orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
+                <box>
+                  <label class="accent" label="Track: " xalign={0} />
+                  <label wrap maxWidthChars={40} class="gray2" label={item.track} xalign={0} hexpand />
+                </box>
+                <box>
+                  <label class="accent" label="Artist: " xalign={0} />
+                  <label wrap maxWidthChars={40} class="gray3" label={item.artist} xalign={0} hexpand />
+                </box>
+                <box>
+                  <label class="accent" label="Album: " xalign={0} />
+                  <label wrap maxWidthChars={40} class="gray3" label={item.album} xalign={0} hexpand />
+                </box>
+                {idx.peek() === 0 && (
+                  <box>
+                    <label class="accent" label="Duration: " xalign={0} />
+                    <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.duration} xalign={0} />
+                  </box>
                 )}
-                <box class="track-details" orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
-                  <box>
-                    <label class="accent" label="Track: " xalign={0} />
-                    <label wrap maxWidthChars={40} class="gray2" label={item.track} xalign={0} hexpand />
-                  </box>
-                  <box>
-                    <label class="accent" label="Artist: " xalign={0} />
-                    <label wrap maxWidthChars={40} class="gray3" label={item.artist} xalign={0} hexpand />
-                  </box>
-                  <box>
-                    <label class="accent" label="Album: " xalign={0} />
-                    <label wrap maxWidthChars={40} class="gray3" label={item.album} xalign={0} hexpand />
-                  </box>
-                  {idx.peek() === 0 && (
-                    <box>
-                      <label class="accent" label="Duration: " xalign={0} />
-                      <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.duration} xalign={0} />
-                    </box>
-                  )}
-                  <box>
-                    <label class="accent" label="Plays: " xalign={0} />
-                    <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.playcount} xalign={0} />
-                    <label class="accent" label="Artist plays: " xalign={0} />
-                    <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.artistPlaycount} xalign={0} />
-                  </box>
+                <box>
+                  <label class="accent" label="Plays: " xalign={0} />
+                  <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.playcount} xalign={0} />
+                  <label class="accent" label="Artist plays: " xalign={0} />
+                  <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.artistPlaycount} xalign={0} />
                 </box>
               </box>
-              {idx.peek() === 0 && <box class="hr-line" />}
             </box>
-          )}
-        </For>
-      </box>
-    </window>
+            {idx.peek() === 0 && <box class="hr-line" />}
+          </box>
+        )}
+      </For>
+    </box>
   )
 }

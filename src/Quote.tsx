@@ -1,12 +1,9 @@
-import app from "ags/gtk4/app"
-import { Astal, Gtk, Gdk } from "ags/gtk4"
+import { Gtk } from "ags/gtk4"
 import { createState, createComputed } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
 import { readFile, writeFile } from "./util"
 import { env } from "../config"
-
-const { BOTTOM, LEFT } = Astal.WindowAnchor
 const API_KEY = env.ZENQUOTES_API_KEY || ""
 const DATA_DIR = "/tmp/ags/quote"
 const CACHE_FILE = `${DATA_DIR}/data.json`
@@ -64,18 +61,16 @@ async function fetchAuthorImage(data: any) {
 interval(86400000, () => fetchQuote().catch((e) => console.error("quote poll:", e)))
 fetchQuote().catch((e) => console.error("quote init:", e))
 
-export default function QuoteWidget() {
+export function QuoteBox() {
   return (
-    <window visible name="quote" class="Quote" anchor={BOTTOM | LEFT} exclusivity={Astal.Exclusivity.NORMAL} application={app} widthRequest={399} resizable={false}>
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-        <label wrap xalign={0} class="section-header" label="QUOTE" />
-        <box class="hr-line" />
-        <box>
-          <label wrap maxWidthChars={40} class="gray1" label={createComputed(() => quote().text)} xalign={0} hexpand valign={Gtk.Align.CENTER} />
-          <image file={authorImage} pixelSize={createComputed(() => authorImage() ? 80 : 0)} halign={Gtk.Align.END} valign={Gtk.Align.START} />
-        </box>
-        <label wrap ellipsize={3} maxWidthChars={40} class="quote-author" label={createComputed(() => `~${quote().author}~`)} xalign={1} />
+    <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
+      <label wrap xalign={0} class="section-header" label="QUOTE" />
+      <box class="hr-line" />
+      <box>
+        <label wrap maxWidthChars={40} class="gray1" label={createComputed(() => quote().text)} xalign={0} hexpand valign={Gtk.Align.CENTER} />
+        <image file={authorImage} pixelSize={createComputed(() => authorImage() ? 80 : 0)} halign={Gtk.Align.END} valign={Gtk.Align.START} />
       </box>
-    </window>
+      <label wrap ellipsize={3} maxWidthChars={40} class="quote-author" label={createComputed(() => `~${quote().author}~`)} xalign={1} />
+    </box>
   )
 }
