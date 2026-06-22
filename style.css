@@ -1,5 +1,5 @@
 window {
-  background-color: rgba(0, 0, 0, 0.8);
+  background-color: transparent;
   color: #EAEAEA;
   font-family: "Iosevka";
   font-size: 10.5pt;
@@ -78,30 +78,6 @@ label.clock-large {
 label.date-large {
   font-size: 15pt;
   color: #EAEAEA;
-}
-
-levelbar {
-  min-height: 10px;
-  min-width: 200px;
-}
-levelbar trough {
-  background: transparent;
-  border: 1px solid #FFFFFF;
-}
-levelbar trough block {
-  border-radius: 0;
-}
-levelbar trough block.empty {
-  background: transparent;
-}
-levelbar.cpu-white trough block.filled {
-  background: #FFFFFF;
-}
-levelbar.cpu-yellow trough block.filled {
-  background: #E3C30D;
-}
-levelbar.cpu-red trough block.filled {
-  background: #FF0000;
 }
 
 box.cpu-gauge {
