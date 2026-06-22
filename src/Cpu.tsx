@@ -26,7 +26,7 @@ export function CpuBox() {
                   <box hexpand={true} heightRequest={bar.h} valign={Gtk.Align.END}
                     class={bar.cls} />
                 </box>
-                <label wrap ellipsize={3} maxWidthChars={5} class="gray2" label={`CPU${bar.idx}`} xalign={0.5} />
+                <label wrap ellipsize={3} maxWidthChars={5} class="gray2" label={`CPU${bar.idx + 1}`} xalign={0.5} />
               </box>
             ))}
           </box>
