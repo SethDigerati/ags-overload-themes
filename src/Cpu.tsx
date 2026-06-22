@@ -1,6 +1,8 @@
 import { Gtk } from "ags/gtk4"
 import { createComputed, For } from "ags"
-import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, coreRows, topProcs } from "../data"
+import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, coreRows, topProcs, cpuGraphData } from "../data"
+import { Graph } from "./Graph"
+import { graphs } from "../config"
 
 export function CpuBox() {
   return (
@@ -14,6 +16,7 @@ export function CpuBox() {
           cssClasses={createComputed(() => { const p = cpuPerc(); return ["cpu-bar", p >= 85 ? "cpu-yellow" : "cpu-white"] })} />
         <label wrap ellipsize={3} maxWidthChars={20} class="gray1" label={createComputed(() => `${cpuFreq()}/${cpuMaxFreq()}`)} xalign={1} />
       </box>
+      {graphs.cpu && <Graph data={cpuGraphData} width={399} height={50} className="cpu-graph" />}
       <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
         <For each={coreRows}>{(row) => (
           <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} homogeneous={true}>
@@ -37,7 +40,7 @@ export function CpuBox() {
         <label class="accent" label="Size%" xalign={1} widthRequest={55} />
       </box>
       <box class="hr-line" />
-      <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
+    <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
         <For each={topProcs}>{(item) => (
           <box widthRequest={399} spacing={5}>
             <label ellipsize={3} maxWidthChars={22} wrap class="gray2" label={item.name} xalign={0} hexpand />
