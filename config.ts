@@ -49,6 +49,12 @@ export function loadEnv(): Record<string, string> {
 
 export const env = loadEnv()
 
+export const graphs = {
+  cpu: true,
+  networkDown: true,
+  networkUp: true,
+}
+
 export const defaultInterface = "wlan0"
 
 export const rightColumnWidgets = ["SystemBox", "CpuBox", "MemoryBox", "GpuBox"]
