@@ -48,9 +48,6 @@ export default function Memory() {
         </box>
         <levelbar hexpand heightRequest={10} value={createComputed(() => swapPerc() / 100)}
           cssClasses={createComputed(() => { const p = swapPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
-        <label wrap xalign={0} class="section-header" label="STORAGE DEVICES" />
-        <box class="hr-line" />
-        <label xalign={0} ellipsize={3} maxWidthChars={55} class="gray3" label={createComputed(() => storageDevices() || "N/A")} />
         <label wrap xalign={0} class="section-header" label="DISK" />
         <box class="hr-line" />
         <box>
@@ -72,6 +69,9 @@ export default function Memory() {
           <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
             label={createComputed(() => formatSpeed(diskWriteSpeed()))} />
         </box>
+        <label wrap xalign={0} class="section-header" label="STORAGE DEVICES" />
+        <box class="hr-line" />
+        <label xalign={0} ellipsize={3} maxWidthChars={55} class="gray3" label={createComputed(() => storageDevices() || "N/A")} />
       </box>
     </window>
   )
