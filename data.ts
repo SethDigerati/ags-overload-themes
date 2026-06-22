@@ -24,6 +24,7 @@ export const [corePercs, setCorePercs] = createState<number[]>([])
 export const [coreBars, setCoreBars] = createState<{ idx: number; h: number; cls: string }[]>([])
 export const [coreRows, setCoreRows] = createState<{ idx: number; h: number; cls: string }[][]>([])
 export const [topProcs, setTopProcs] = createState<Array<{ name: string; pid: string; threads: string; cpu: string }>>([])
+export const [topMemProcs, setTopMemProcs] = createState<Array<{ name: string; pid: string; vsize: string; size: string }>>([])
 
 export const [memPerc, setMemPerc] = createState(0)
 export const [memUsed, setMemUsed] = createState("0")
@@ -369,6 +370,25 @@ function collectTopProcs() {
   }))
 }
 
+function collectTopMemProcs() {
+  const out = run("ps -eo pid,%mem,vsize,rss,comm --sort=-%mem --no-headers | head -5")
+  if (!out) return
+  const lines = out.split("\n").filter(l => l.trim())
+  setTopMemProcs(lines.map(line => {
+    const parts = line.trim().split(/\s+/)
+    const pid = parts[0]
+    const vsizeKB = parseInt(parts[2]) || 0
+    const rssKB = parseInt(parts[3]) || 0
+    const name = parts.slice(4).join(" ") || "?"
+    return {
+      pid: pid || "",
+      name,
+      vsize: vsizeKB > 0 ? formatBytes(vsizeKB * 1024) : "0",
+      size: rssKB > 0 ? formatBytes(rssKB * 1024) : "0",
+    }
+  }))
+}
+
 function updateAll() {
   try {
     const p = calcCpuPerc()
@@ -397,6 +417,7 @@ function updateAll() {
     collectNetConns()
     collectDisk()
     collectTopProcs()
+    collectTopMemProcs()
   } catch (e) { console.error("data update:", e) }
 }
 
