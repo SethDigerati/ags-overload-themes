@@ -45,8 +45,9 @@ export function Graph({ data, width, height, reversed, className }: { data: () =
     cr.setSourceRGBA(1, 1, 1, 0.5)
     cr.stroke()
 
-    cr.moveTo(0, h - 0.5)
-    cr.lineTo(w, h - 0.5)
+    const axisY = reversed ? 0.5 : h - 0.5
+    cr.moveTo(0, axisY)
+    cr.lineTo(w, axisY)
     cr.setLineWidth(1)
     cr.setSourceRGBA(0.2, 0.2, 0.2, 0.9)
     cr.stroke()
