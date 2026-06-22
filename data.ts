@@ -357,7 +357,7 @@ export function formatSpeed(kib: number): string {
 }
 
 function collectTopProcs() {
-  const out = run("ps -eo pid,nlwp,%cpu,comm --sort=-%cpu --no-headers | head -5")
+  const out = run("ps -eo pid,nlwp,%cpu,comm --sort=-%cpu --no-headers | head -10")
   if (!out) return
   const lines = out.split("\n").filter(l => l.trim())
   setTopProcs(lines.map(line => {
@@ -371,7 +371,7 @@ function collectTopProcs() {
 }
 
 function collectTopMemProcs() {
-  const out = run("ps -eo pid,%mem,vsize,rss,comm --sort=-%mem --no-headers | head -5")
+  const out = run("ps -eo pid,%mem,vsize,rss,comm --sort=-%mem --no-headers | head -10")
   if (!out) return
   const lines = out.split("\n").filter(l => l.trim())
   setTopMemProcs(lines.map(line => {
