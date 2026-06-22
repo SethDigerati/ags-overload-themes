@@ -2,6 +2,7 @@ import { Gtk } from "ags/gtk4"
 import { createComputed, For } from "ags"
 import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, coreRows, topProcs, cpuGraphData } from "../data"
 import { Graph } from "./Graph"
+import { Levelbar } from "./Levelbar"
 import { graphs } from "../config"
 
 export function CpuBox() {
@@ -12,8 +13,7 @@ export function CpuBox() {
       <label ellipsize={3} maxWidthChars={50} wrap class="gray1" label={createComputed(() => cpuModel())} xalign={0} />
       <box spacing={2}>
         <label wrap ellipsize={3} maxWidthChars={6} label={createComputed(() => `${cpuPerc()}%`)} xalign={0} />
-        <levelbar hexpand heightRequest={10} valign={Gtk.Align.CENTER} value={cpuPercNorm}
-          cssClasses={createComputed(() => { const p = cpuPerc(); return ["cpu-bar", p >= 85 ? "cpu-yellow" : "cpu-white"] })} />
+        <Levelbar value={cpuPercNorm} />
         <label wrap ellipsize={3} maxWidthChars={20} class="gray1" label={createComputed(() => `${cpuFreq()}/${cpuMaxFreq()}`)} xalign={1} />
       </box>
       {graphs.cpu && <Graph data={cpuGraphData} width={399} height={50} className="cpu-graph" />}

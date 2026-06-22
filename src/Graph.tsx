@@ -28,11 +28,11 @@ export function Graph({ data, width, height, reversed, className }: { data: () =
 
     const gradient = new Cairo.LinearGradient(0, 0, 0, h)
     if (reversed) {
-      gradient.addColorStopRGBA(0, 0, 0, 0, 0)
+      gradient.addColorStopRGBA(0, 0.875, 0.753, 0.051, 0)
       gradient.addColorStopRGBA(1, 0.875, 0.753, 0.051, 1)
     } else {
       gradient.addColorStopRGBA(0, 0.875, 0.753, 0.051, 1)
-      gradient.addColorStopRGBA(1, 0, 0, 0, 0)
+      gradient.addColorStopRGBA(1, 0.875, 0.753, 0.051, 0)
     }
     cr.setSource(gradient)
     cr.fill()

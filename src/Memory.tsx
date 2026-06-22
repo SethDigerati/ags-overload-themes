@@ -11,6 +11,7 @@ import {
   topMemProcs,
 } from "../data"
 import { Graph } from "./Graph"
+import { Levelbar } from "./Levelbar"
 import { graphs } from "../config"
 
 export function MemoryBox() {
@@ -43,8 +44,7 @@ export function MemoryBox() {
         <label ellipsize={3} maxWidthChars={25} class="gray1" xalign={1}
           label={createComputed(() => `${memEasyFree()} Free / ${memTotal()}`)} />
       </box>
-      <levelbar hexpand heightRequest={10} value={createComputed(() => memPerc() / 100)}
-        cssClasses={createComputed(() => { const p = memPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
+      <Levelbar value={createComputed(() => memPerc() / 100)} />
       <label wrap xalign={0} class="section-header" label="SWAP" />
       <box class="hr-line" />
       <box>
@@ -54,8 +54,7 @@ export function MemoryBox() {
         <label ellipsize={3} maxWidthChars={25} class="gray1" xalign={1}
           label={createComputed(() => `${swapFree()} Free / ${swapMax()}`)} />
       </box>
-      <levelbar hexpand heightRequest={10} value={createComputed(() => swapPerc() / 100)}
-        cssClasses={createComputed(() => { const p = swapPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
+      <Levelbar value={createComputed(() => swapPerc() / 100)} />
       <label wrap xalign={0} class="section-header" label="DISK" />
       <box class="hr-line" />
       <box>
@@ -65,8 +64,7 @@ export function MemoryBox() {
         <label ellipsize={3} maxWidthChars={25} class="gray1" xalign={1}
           label={createComputed(() => `${diskFree()} Free / ${diskTotal()}`)} />
       </box>
-      <levelbar hexpand heightRequest={10} value={createComputed(() => diskPerc() / 100)}
-        cssClasses={createComputed(() => { const p = diskPerc(); return ["cpu-bar", p >= 90 ? "cpu-red" : p >= 75 ? "cpu-yellow" : "cpu-white"] })} />
+      <Levelbar value={createComputed(() => diskPerc() / 100)} />
       <box>
         <label class="accent" xalign={1} widthRequest={70} label="Read : " />
         <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
