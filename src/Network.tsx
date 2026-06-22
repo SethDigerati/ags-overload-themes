@@ -7,9 +7,12 @@ import {
   netDownSpeed, netUpSpeed, netDownTotal, netUpTotal,
   netLocalIp, netLatency, netLoss, netJitter,
   netConnections, netInbound, netOutbound, netISP,
+  netDownGraphData, netUpGraphData,
   setNetISP,
   formatSpeed,
 } from "../data"
+import { Graph } from "./Graph"
+import { graphs } from "../config"
 
 const netLabels = [
   "Status : ", "SSID : ", "Bitrate : ", "ISP : ", "Latency : ", "Loss : ",
@@ -110,6 +113,8 @@ export function NetworkBox() {
         <label ellipsize={3} maxWidthChars={20} wrap class="gray2" xalign={0} hexpand
           label={createComputed(() => formatSpeed(netUpSpeed()))} />
       </box>
+      {graphs.networkDown && <Graph data={netDownGraphData} width={399} height={40} />}
+      {graphs.networkUp && <Graph data={netUpGraphData} width={399} height={40} reversed />}
       <box>
         <label class="accent" xalign={1} widthRequest={netFieldWidth} label="Local IP : " />
         <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
