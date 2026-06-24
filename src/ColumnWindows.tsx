@@ -21,7 +21,7 @@ const widgetMap: Record<string, any> = {
 }
 
 export const RightCol = () => (
-  <window visible name="right-column" class="RightColumn" anchor={TOP | RIGHT} marginRight={0} widthRequest={399} exclusivity={Astal.Exclusivity.NORMAL} layer={Astal.Layer.BACKGROUND} application={app} resizable={false}>
+  <window visible name="right-column" class="RightColumn" anchor={TOP | RIGHT} marginRight={0} widthRequest={399} exclusivity={Astal.Exclusivity.NORMAL} layer={Astal.Layer.BOTTOM} application={app} resizable={false}>
     <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399} spacing={2}>
       {rightColumnWidgets.map(name => {
         const W = widgetMap[name]
@@ -32,7 +32,7 @@ export const RightCol = () => (
 )
 
 export const LeftCol = () => (
-  <window visible name="left-column" class="LeftColumn" anchor={TOP | LEFT} widthRequest={399} exclusivity={Astal.Exclusivity.NORMAL} layer={Astal.Layer.BACKGROUND} application={app} resizable={false}>
+  <window visible name="left-column" class="LeftColumn" anchor={TOP | LEFT} widthRequest={399} exclusivity={Astal.Exclusivity.NORMAL} layer={Astal.Layer.BOTTOM} application={app} resizable={false}>
     <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399} spacing={2}>
       {leftColumnWidgets.map(name => {
         const W = widgetMap[name]
