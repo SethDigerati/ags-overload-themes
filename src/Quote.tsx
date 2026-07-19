@@ -27,6 +27,7 @@ async function fetchQuote() {
     const res = await fetch(`https://zenquotes.io/api/today${token}`)
     const data = await res.json()
     if (!data?.[0]) return
+    if (data[0].q === quote().text) return
     const newQuote = { text: data[0].q, author: data[0].a }
     setQuote(newQuote)
     writeFile(CACHE_FILE, JSON.stringify(newQuote))
