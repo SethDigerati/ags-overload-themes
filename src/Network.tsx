@@ -27,7 +27,7 @@ async function fetchISP() {
     const raw = await res.text()
     if (raw) {
       const clean = raw.trim().replace(/^[Aa][Ss]\d+\s+/, "").replace(/^[A-Z]+\d+\s+/, "")
-      if (clean) setNetISP(clean)
+      if (clean && clean !== netISP()) setNetISP(clean)
     }
   } catch (e) { console.error("isp fetch:", e) }
 }
