@@ -39,7 +39,7 @@ async function fetchLastfm() {
             const imgRes = await fetch(imgUrl)
             const imgBytes = await imgRes.bytes()
             if (imgBytes) {
-              imgPath = `${DATA_DIR}/cover_${ts}_${i}.jpg`
+              imgPath = `${DATA_DIR}/cover_${i}.jpg`
               writeFile(imgPath, imgBytes.toArray())
             }
           } catch (e) { console.error("lastfm image download:", e) }
