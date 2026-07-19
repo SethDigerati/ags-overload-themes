@@ -25,6 +25,12 @@ async function fetchLastfm() {
     const data = await res.json()
     if (!data?.recenttracks?.track) return
     const items = Array.isArray(data.recenttracks.track) ? data.recenttracks.track : [data.recenttracks.track]
+    if (tracks().length > 0 && tracks()[0].isNowPlaying) {
+      const first = items[0]
+      if (first?.["@attr"]?.nowplaying === "true" &&
+          `${first.artist?.["#text"]}|${first.name}` === `${tracks()[0].artist}|${tracks()[0].track}`)
+        return
+    }
     const ts = Date.now()
     const all: Array<{ artist: string; track: string; album: string; duration: string; playcount: string; artistPlaycount: string; image: string; isNowPlaying: boolean }> = []
     const count = Math.min(4, items.length)
