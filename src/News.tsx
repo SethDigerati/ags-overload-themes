@@ -64,6 +64,10 @@ async function fetchCategory(cat: string) {
         source: a.publisher || "",
         publishedAt: a.published_at || "",
       }))
+      const prev = newsData()[cat]
+      if (prev && prev.length === current[cat].length &&
+          prev.every((a, i) => a.title === current[cat][i].title))
+        return
       setNewsData(current)
     }
   } catch (e) { console.error(`news ${cat}:`, e) }
