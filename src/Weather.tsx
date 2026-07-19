@@ -94,6 +94,8 @@ async function fetchWeather() {
       const isDay = w.icon.endsWith("d")
       const windDeg = data.wind.deg || 0
       console.log("weather: got data", data.main.temp, w.description)
+      if (`${Math.round(data.main.temp)}|${w.description.replace(/\b\w/g, (c: string) => c.toUpperCase())}`
+          === `${weather().temp}|${weather().description}`) return
       setWeather({
         temp: Math.round(data.main.temp).toString(),
         tempMin: Math.round(data.main.temp_min).toString(),
@@ -144,7 +146,7 @@ async function fetchForecast() {
         days[date].icon = mapWeatherIcon(item.weather[0].id, isDay)
       }
     }
-    setForecast(Object.entries(days).slice(1, 6).map(([date, d]: [string, any]) => ({
+    const newForecast = Object.entries(days).slice(1, 6).map(([date, d]: [string, any]) => ({
       day: new Date(date).toLocaleDateString("en", { weekday: "short" }),
       temp: `${Math.round(d.tempMin)}-${Math.round(d.tempMax)}`,
       desc: d.desc || "N/A",
@@ -152,7 +154,11 @@ async function fetchForecast() {
       wind: (d.wind / d.count).toFixed(1),
       precip: d.precip.toFixed(1),
       pop: Math.round(d.pop).toString(),
-    })))
+    }))
+    if (forecast().length === newForecast.length &&
+        newForecast.every((f, i) => f.day === forecast()[i].day && f.temp === forecast()[i].temp))
+      return
+    setForecast(newForecast)
   } catch (e) { console.error("weather forecast:", e) }
 }
 
