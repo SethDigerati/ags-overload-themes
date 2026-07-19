@@ -22,7 +22,7 @@ export const intervals = {
   lastfm: 2000,
   market: 240000,
   news: 300000,
-  quote: 86400000,
+  quote: 300000,
 }
 
 export const margins = {

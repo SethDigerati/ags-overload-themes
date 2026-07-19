@@ -3,7 +3,7 @@ import { createState, createComputed } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
 import { readFile, writeFile } from "./util"
-import { env } from "../config"
+import { env, intervals } from "../config"
 const API_KEY = env.ZENQUOTES_API_KEY || ""
 const DATA_DIR = "/tmp/ags/quote"
 const CACHE_FILE = `${DATA_DIR}/data.json`
@@ -58,7 +58,7 @@ async function fetchAuthorImage(data: any) {
   } catch { /* ignore */ }
 }
 
-interval(86400000, () => fetchQuote().catch((e) => console.error("quote poll:", e)))
+interval(intervals.quote, () => fetchQuote().catch((e) => console.error("quote poll:", e)))
 fetchQuote().catch((e) => console.error("quote init:", e))
 
 export function QuoteBox() {
