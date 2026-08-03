@@ -19,19 +19,26 @@ try {
   }
 } catch { /* ignore */ }
 
+let initialImage = ""
+try {
+  if (readFile(`${DATA_DIR}/author.png`)) initialImage = `${DATA_DIR}/author.png`
+} catch { /* ignore */ }
+
 const [quote, setQuote] = createState(initialQuote)
-const [authorImage, setAuthorImage] = createState("")
+const [authorImage, setAuthorImage] = createState(initialImage)
 
 async function fetchQuote() {
   try {
     const res = await fetch(`https://zenquotes.io/api/today${token}`)
     const data = await res.json()
-    if (!data?.[0]) return
-    if (data[0].q === quote().text) return
-    const newQuote = { text: data[0].q, author: data[0].a }
-    setQuote(newQuote)
-    writeFile(CACHE_FILE, JSON.stringify(newQuote))
-    fetchAuthorImage(data[0])
+    if (!data?.[0] || !data[0].q) return
+    const newQuote = { text: data[0].q, author: data[0].a || "Unknown" }
+    const changed = newQuote.text !== quote().text
+    if (changed) {
+      setQuote(newQuote)
+      writeFile(CACHE_FILE, JSON.stringify(newQuote))
+    }
+    if (changed || !authorImage()) fetchAuthorImage(data[0])
   } catch (e) { console.error("quote fetch:", e) }
 }
 
@@ -41,8 +48,9 @@ async function fetchAuthorImage(data: any) {
       try {
         const imgRes = await fetch(data.i)
         const imgBytes = await imgRes.bytes()
-        if (imgBytes) {
-          writeFile(`${DATA_DIR}/author.png`, imgBytes.toArray())
+        const imgArray = imgBytes?.toArray()
+        if (imgArray && imgArray.length > 0) {
+          writeFile(`${DATA_DIR}/author.png`, imgArray)
           setAuthorImage(`${DATA_DIR}/author.png`)
           return
         }
@@ -51,8 +59,9 @@ async function fetchAuthorImage(data: any) {
     try {
       const avatarRes = await fetch(`https://ui-avatars.com/api/?name=${encodeURIComponent(data.a)}&size=80&background=1a1a1a&color=FFE020`)
       const avatarBytes = await avatarRes.bytes()
-      if (avatarBytes && avatarBytes.length > 0) {
-        writeFile(`${DATA_DIR}/author.png`, avatarBytes.toArray())
+      const avatarArray = avatarBytes?.toArray()
+      if (avatarArray && avatarArray.length > 0) {
+        writeFile(`${DATA_DIR}/author.png`, avatarArray)
         setAuthorImage(`${DATA_DIR}/author.png`)
       }
     } catch { /* ignore */ }
