@@ -19,7 +19,7 @@ export const intervals = {
   system: 1000,
   network: 2000,
   weather: 600000,
-  lastfm: 2000,
+  lastfm: 30000,
   market: 240000,
   news: 300000,
   quote: 300000,
