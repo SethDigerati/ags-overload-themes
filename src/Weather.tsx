@@ -221,9 +221,9 @@ export function WeatherBox() {
         <box class="forecast-header">
           <label class="accent" label="Day" widthRequest={50} xalign={0} />
           <label class="accent weather-col" label="Weather" widthRequest={100} xalign={0} />
-          <label class="accent" label="Temp" widthRequest={55} xalign={0} />
+          <label class="accent temp-col" label="Temp" widthRequest={55} xalign={0} />
           <label class="accent hmd-col" label="Hmd" widthRequest={50} xalign={0} />
-          <label class="accent" label="Wind" widthRequest={55} xalign={0} />
+          <label class="accent wind-col" label="Wind" widthRequest={55} xalign={0} />
           <label class="accent prec-col" label="Prec" widthRequest={55} xalign={0} />
           <label class="accent" label="Rain%" xalign={1} hexpand />
         </box>
@@ -233,9 +233,9 @@ export function WeatherBox() {
             <box>
               <label ellipsize={3} maxWidthChars={5} label={item.day} widthRequest={50} xalign={0} />
               <label class="gray2 weather-col" ellipsize={3} maxWidthChars={15} label={item.desc} widthRequest={100} xalign={0} />
-              <label ellipsize={3} maxWidthChars={8} label={`${item.temp}°C`} widthRequest={55} xalign={0} />
+              <label ellipsize={3} maxWidthChars={8} class="temp-col" label={`${item.temp}°C`} widthRequest={55} xalign={0} />
               <label ellipsize={3} maxWidthChars={5} class="hmd-col" label={`${item.humidity}%`} widthRequest={50} xalign={0} />
-              <label ellipsize={3} maxWidthChars={8} label={`${item.wind}km/h`} widthRequest={55} xalign={0} />
+              <label ellipsize={3} maxWidthChars={8} class="wind-col" label={`${item.wind}km/h`} widthRequest={55} xalign={0} />
               <label ellipsize={3} maxWidthChars={6} class="prec-col" label={`${item.precip}mm`} widthRequest={55} xalign={0} />
               <label ellipsize={3} maxWidthChars={5} label={`${item.pop}%`} xalign={1} hexpand />
             </box>
