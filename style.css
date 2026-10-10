@@ -152,11 +152,19 @@ label.prec-col {
 }
 
 label.hmd-col {
-  margin-left: 5px;
+  margin-left: 11px;
+}
+
+label.temp-col {
+  margin-left: 3px;
+}
+
+label.wind-col {
+  margin-left: -3px;
 }
 
 label.weather-col {
-  margin-left: -10px;
+  margin-left: -13px;
 }
 
 drawingarea.graph {
