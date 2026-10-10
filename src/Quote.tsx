@@ -76,11 +76,11 @@ export function QuoteBox() {
     <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
       <label wrap xalign={0} class="section-header" label="QUOTE" />
       <box class="hr-line" />
-      <box>
+      <box spacing={8}>
+        <image file={authorImage} pixelSize={createComputed(() => authorImage() ? 80 : 0)} halign={Gtk.Align.START} valign={Gtk.Align.START} />
         <label wrap maxWidthChars={40} class="gray1" label={createComputed(() => quote().text)} xalign={0} hexpand valign={Gtk.Align.CENTER} />
-        <image file={authorImage} pixelSize={createComputed(() => authorImage() ? 80 : 0)} halign={Gtk.Align.END} valign={Gtk.Align.START} />
       </box>
-      <label wrap ellipsize={3} maxWidthChars={40} class="quote-author" label={createComputed(() => `~${quote().author}~`)} xalign={1} />
+      <label wrap ellipsize={3} maxWidthChars={40} class="quote-author" label={createComputed(() => `~${quote().author}~`)} xalign={0} />
     </box>
   )
 }
