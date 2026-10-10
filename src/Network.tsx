@@ -21,14 +21,52 @@ const netLabels = [
 ]
 const netFieldWidth = Math.max(...netLabels.map(l => l.length)) * 7 + 10
 
+const MAX_ISP_LEN = 50
+const ISP_RATE_LIMIT_MSG = "Rate limit exceeded"
+
+function sanitizeISP(value: string): string {
+  return value.replace(/[\r\n]+/g, " ").replace(/\s+/g, " ").trim().slice(0, MAX_ISP_LEN)
+}
+
 async function fetchISP() {
   try {
     const res = await fetch("https://ipinfo.io/org")
-    const raw = await res.text()
-    if (raw) {
-      const clean = raw.trim().replace(/^[Aa][Ss]\d+\s+/, "").replace(/^[A-Z]+\d+\s+/, "")
-      if (clean && clean !== netISP()) setNetISP(clean)
+    if (res.status === 429) {
+      if (ISP_RATE_LIMIT_MSG !== netISP()) setNetISP(ISP_RATE_LIMIT_MSG)
+      console.error("isp fetch: rate limit exceeded (429)")
+      return
     }
+    if (!res.ok) {
+      const msg = sanitizeISP(`Error ${res.status}`)
+      if (msg && msg !== netISP()) setNetISP(msg)
+      return
+    }
+    const raw = await res.text()
+    if (!raw) return
+    if (/rate.?limit/i.test(raw)) {
+      if (ISP_RATE_LIMIT_MSG !== netISP()) setNetISP(ISP_RATE_LIMIT_MSG)
+      return
+    }
+    const trimmed = raw.trim()
+    if (trimmed.startsWith("{")) {
+      // ipinfo returns JSON on errors (e.g. rate limit) — never show raw JSON
+      try {
+        const data = JSON.parse(trimmed)
+        const title = data?.error?.title || data?.error || ""
+        if (/rate.?limit/i.test(String(title))) {
+          if (ISP_RATE_LIMIT_MSG !== netISP()) setNetISP(ISP_RATE_LIMIT_MSG)
+        } else {
+          const fallback = sanitizeISP(String(title || "ISP error"))
+          if (fallback && fallback !== netISP()) setNetISP(fallback)
+        }
+      } catch {
+        if (ISP_RATE_LIMIT_MSG !== netISP()) setNetISP(ISP_RATE_LIMIT_MSG)
+      }
+      return
+    }
+    const stripped = trimmed.replace(/^[Aa][Ss]\d+\s+/, "").replace(/^[A-Z]+\d+\s+/, "")
+    const clean = sanitizeISP(stripped)
+    if (clean && clean !== netISP()) setNetISP(clean)
   } catch (e) { console.error("isp fetch:", e) }
 }
 
@@ -53,7 +91,7 @@ export function NetworkBox() {
       </box>
       <box>
         <label class="accent" xalign={1} widthRequest={netFieldWidth} label="ISP : " />
-        <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
+        <label ellipsize={3} maxWidthChars={50} lines={1} singleLineMode class="gray2" xalign={0} hexpand
           label={createComputed(() => netISP())} />
       </box>
       <box>
