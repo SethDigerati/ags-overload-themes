@@ -1,6 +1,6 @@
 import { createState } from "ags"
-import { interval } from "ags/time"
-import { readFile, exec, setIfChanged } from "./src/util"
+import { interval, timeout } from "ags/time"
+import { readFile, exec, setIfChanged, execAsyncFast } from "./src/util"
 import { defaultInterface } from "./config"
 
 function readSys(path: string): string {
@@ -306,8 +306,8 @@ function collectDiskSpeeds() {
   }
 }
 
-function collectDiskUsage() {
-  const df = run("df -h / 2>/dev/null | tail -1").trim()
+async function collectDiskUsage() {
+  const df = (await execAsyncFast(["bash", "-c", "df -h / 2>/dev/null | tail -1"])).trim()
   if (df) {
     const p = df.split(/\s+/)
     if (p.length >= 6) { setDiskTotal(p[1]); setDiskUsed(p[2]); setDiskFree(p[3]); setIfChanged(diskPerc, setDiskPerc, parseInt(p[4].replace("%", "")) || 0) }
@@ -343,8 +343,8 @@ export function formatSpeed(kib: number): string {
   return Math.round(kib) + "KiB/s"
 }
 
-function collectTopProcs() {
-  const out = run("ps -eo pid,nlwp,%cpu,comm --sort=-%cpu --no-headers | head -10")
+async function collectTopProcs() {
+  const out = await execAsyncFast(["bash", "-c", "ps -eo pid,nlwp,%cpu,comm --sort=-%cpu --no-headers | head -10"])
   if (!out) return
   const lines = out.split("\n").filter(l => l.trim())
   setTopProcs(lines.map(line => {
@@ -357,8 +357,8 @@ function collectTopProcs() {
   }))
 }
 
-function collectTopMemProcs() {
-  const out = run("ps -eo pid,%mem,vsize,rss,comm --sort=-%mem --no-headers | head -10")
+async function collectTopMemProcs() {
+  const out = await execAsyncFast(["bash", "-c", "ps -eo pid,%mem,vsize,rss,comm --sort=-%mem --no-headers | head -10"])
   if (!out) return
   const lines = out.split("\n").filter(l => l.trim())
   setTopMemProcs(lines.map(line => {
@@ -376,12 +376,12 @@ function collectTopMemProcs() {
   }))
 }
 
-function fastUpdate() {
+// tick A (offset 0ms): cpu stat + mem + sys
+function fastUpdateA() {
   try {
     const stat = readSys("/proc/stat")
     const p = calcCpuPerc(stat)
     setIfChanged(cpuPerc, setCpuPerc, p)
-    pushGraphBuf(cpuGraphBuf, p, cpuGraphData, setCpuGraphData)
     setIfChanged(cpuPercNorm, setCpuPercNorm, p / 100)
     const cores = calcCorePercs(stat)
     setCorePercs(cores)
@@ -398,34 +398,46 @@ function fastUpdate() {
     setCoreRows(rows)
     collectSys()
     parseMem()
-    collectNet()
-    pushGraphBuf(netDownGraphBuf, netDownSpeed(), netDownGraphData, setNetDownGraphData)
-    pushGraphBuf(netUpGraphBuf, netUpSpeed(), netUpGraphData, setNetUpGraphData)
-    collectDiskSpeeds()
-    pushGraphBuf(diskReadGraphBuf, diskReadSpeed(), diskReadGraphData, setDiskReadGraphData)
-    pushGraphBuf(diskWriteGraphBuf, diskWriteSpeed(), diskWriteGraphData, setDiskWriteGraphData)
-  } catch (e) { console.error("fast update:", e) }
+  } catch (e) { console.error("fast update A:", e) }
 }
 
-function slowUpdate() {
+// tick B (offset 500ms): net + disk speeds + graph pushes
+function fastUpdateB() {
+  try {
+    collectNet()
+    collectDiskSpeeds()
+    pushGraphBuf(cpuGraphBuf, cpuPerc(), cpuGraphData, setCpuGraphData)
+    pushGraphBuf(netDownGraphBuf, netDownSpeed(), netDownGraphData, setNetDownGraphData)
+    pushGraphBuf(netUpGraphBuf, netUpSpeed(), netUpGraphData, setNetUpGraphData)
+    pushGraphBuf(diskReadGraphBuf, diskReadSpeed(), diskReadGraphData, setDiskReadGraphData)
+    pushGraphBuf(diskWriteGraphBuf, diskWriteSpeed(), diskWriteGraphData, setDiskWriteGraphData)
+  } catch (e) { console.error("fast update B:", e) }
+}
+
+let _fetching = false
+
+async function slowUpdate() {
+  if (_fetching) return
+  _fetching = true
   try {
     collectBattery()
     collectTemps()
     collectGpu()
     collectNetConns()
-    collectTopProcs()
-    collectTopMemProcs()
+    await collectTopProcs()
+    await collectTopMemProcs()
     collectNetInfo()
     const f = readSys("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
     if (f) setCpuFreq((parseInt(f) / 1000000).toFixed(1) + "GHz")
     const l = readSys("/proc/loadavg")
     if (l) setCpuLoads(l.split(" ").slice(0, 3).join(" "))
   } catch (e) { console.error("slow update:", e) }
+  finally { _fetching = false }
 }
 
-function verySlowUpdate() {
+async function verySlowUpdate() {
   try {
-    collectDiskUsage()
+    await collectDiskUsage()
   } catch (e) { console.error("very slow update:", e) }
 }
 
@@ -475,10 +487,12 @@ function verySlowUpdate() {
   setStorageDevices(run(`lsblk -ro NAME,SIZE,TYPE,MOUNTPOINTS 2>/dev/null | awk 'function d(n){r="";for(i=1;i<=n;i++)r=r"-";return r} $3=="disk"||$3=="rom"{n="->"$1;n=n d(17-length(n));print n"("$2")"} $3=="part"{mnt=$4;if(length(mnt)>20)mnt=substr(mnt,1,17)"...";n="  \\u2514--"$1;n=n d(17-length(n));l=n"("$2")";if(mnt){p=d(27-length(l));print l p"--" mnt}else print l}'`).trim())
 }
 
-interval(1000, fastUpdate)
-interval(5000, slowUpdate)
-interval(30000, verySlowUpdate)
+interval(1000, fastUpdateA)
+timeout(500, () => interval(1000, fastUpdateB))
+interval(5000, () => { slowUpdate().catch((e) => console.error("slow update:", e)) })
+interval(30000, () => { verySlowUpdate().catch((e) => console.error("very slow update:", e)) })
 interval(PING_INTERVAL, collectNetPing)
-fastUpdate()
-slowUpdate()
-verySlowUpdate()
+fastUpdateA()
+fastUpdateB()
+slowUpdate().catch((e) => console.error("slow init:", e))
+verySlowUpdate().catch((e) => console.error("very slow init:", e))
