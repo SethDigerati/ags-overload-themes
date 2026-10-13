@@ -3,7 +3,9 @@ import { interval, timeout } from "ags/time"
 import { readFile, exec, setIfChanged, execAsyncFast } from "./src/util"
 import UPower from "gi://UPowerGlib?version=1.0"
 import Gio from "gi://Gio?version=2.0"
-import { defaultInterface } from "./config"
+import { defaultInterface, rightColumnWidgets, leftColumnWidgets } from "./config"
+
+const visible = new Set([...rightColumnWidgets, ...leftColumnWidgets])
 
 const networkMonitor = Gio.NetworkMonitor.get_default()
 
@@ -509,22 +511,27 @@ async function slowUpdate() {
   if (_fetching) return
   _fetching = true
   try {
-    collectTemps()
-    collectGpu()
-    collectNetConns()
+    if (visible.has("CpuBox") || visible.has("SystemBox")) {
+      collectTemps()
+      const f = readSys("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
+      if (f) setCpuFreq((parseInt(f) / 1000000).toFixed(1) + "GHz")
+      const l = readSys("/proc/loadavg")
+      if (l) setCpuLoads(l.split(" ").slice(0, 3).join(" "))
+    }
+    if (visible.has("GpuBox")) collectGpu()
+    if (visible.has("NetworkBox")) {
+      collectNetConns()
+      collectNetInfo()
+    }
     await collectTopProcs()
-    await collectTopMemProcs()
-    collectNetInfo()
-    const f = readSys("/sys/devices/system/cpu/cpu0/cpufreq/scaling_cur_freq")
-    if (f) setCpuFreq((parseInt(f) / 1000000).toFixed(1) + "GHz")
-    const l = readSys("/proc/loadavg")
-    if (l) setCpuLoads(l.split(" ").slice(0, 3).join(" "))
+    if (visible.has("MemoryBox")) await collectTopMemProcs()
   } catch (e) { console.error("slow update:", e) }
   finally { _fetching = false }
 }
 
 async function verySlowUpdate() {
   try {
+    if (!visible.has("MemoryBox")) return
     await collectDiskUsage()
   } catch (e) { console.error("very slow update:", e) }
 }
