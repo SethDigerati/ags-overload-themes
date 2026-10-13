@@ -2,6 +2,7 @@ import { Gtk } from "ags/gtk4"
 import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
+import Gio from "gi://Gio?version=2.0"
 import { env } from "../config"
 const API_KEY = env.NEWS_API_KEY || ""
 const API_SOURCE = "FreeNewsApi.io"
@@ -75,6 +76,11 @@ async function fetchCategory(cat: string) {
 
 let catIdx = 0
 interval(300000, () => { fetchCategory(categories[catIdx % categories.length]).catch((e) => console.error("news poll:", e)); catIdx++ })
+Gio.NetworkMonitor.get_default()?.connect("network-changed", (_m: any, online: boolean) => {
+  if (online) {
+    fetchCategory(categories[catIdx++ % categories.length]).catch((e) => console.error("news poll:", e))
+  }
+})
 
 async function initAll() {
   for (const c of categories) {
