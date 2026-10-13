@@ -2,6 +2,7 @@ import { Gtk } from "ags/gtk4"
 import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
+import Gio from "gi://Gio?version=2.0"
 const coinIds = ["bitcoin", "ethereum", "solana", "ripple", "dogecoin", "cardano", "binancecoin", "tron", "avalanche-2", "chainlink", "polkadot", "litecoin"]
 const coinNames = ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "TRX", "AVAX", "LINK", "DOT", "LTC"]
 const countryCurrency: Record<string, string> = {
@@ -99,6 +100,11 @@ async function fetchMarket() {
   } catch (e) { console.error("market forex:", e) }
 }
 interval(240000, () => fetchMarket().catch((e) => console.error("market poll:", e)))
+Gio.NetworkMonitor.get_default()?.connect("network-changed", (_m: any, online: boolean) => {
+  if (online) {
+    fetchMarket().catch((e) => console.error("market poll:", e))
+  }
+})
 fetchLocation().then(() => fetchMarket().catch((e) => console.error("market init:", e)))
 function Cell({ val }: { val: string }) {
   const n = parseFloat(val)
