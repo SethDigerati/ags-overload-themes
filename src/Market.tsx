@@ -101,9 +101,8 @@ async function fetchMarket() {
 }
 interval(240000, () => fetchMarket().catch((e) => console.error("market poll:", e)))
 Gio.NetworkMonitor.get_default()?.connect("network-changed", (_m: any, online: boolean) => {
-  if (online) {
-    fetchMarket().catch((e) => console.error("market poll:", e))
-  }
+  if (!online) return
+  fetchLocation().then(() => fetchMarket().catch((e) => console.error("market poll:", e))).catch((e) => console.error("market reconnect:", e))
 })
 fetchLocation().then(() => fetchMarket().catch((e) => console.error("market init:", e)))
 function Cell({ val }: { val: string }) {
