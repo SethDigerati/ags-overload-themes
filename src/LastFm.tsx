@@ -2,6 +2,7 @@ import { Gtk } from "ags/gtk4"
 import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
+import Gio from "gi://Gio?version=2.0"
 import GLib from "gi://GLib?version=2.0"
 import { writeFile, exec } from "./util"
 import { env, intervals } from "../config"
@@ -178,6 +179,11 @@ async function fetchLastfm() {
 }
 
 interval(intervals.lastfm, () => fetchLastfm().catch((e) => console.error("lastfm poll:", e)))
+Gio.NetworkMonitor.get_default()?.connect("network-changed", (_m: any, online: boolean) => {
+  if (online) {
+    fetchLastfm().catch((e) => console.error("lastfm poll:", e))
+  }
+})
 cleanupLegacy()
 fetchLastfm().catch((e) => console.error("lastfm init:", e))
 
