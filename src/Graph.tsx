@@ -54,13 +54,16 @@ export function Graph({ data, width, height, reversed, className }: { data: () =
     cr.stroke()
   })
 
-  let last = -1
+  // skip redraw only when the whole window is identical (pixel-identical frame)
+  let lastFrame: number[] = []
   createEffect(() => {
     const vals = data()
-    // skip redraw if latest sample unchanged (avoids Cairo cost on duplicate polls)
-    const cur = vals.length > 0 ? vals[vals.length - 1] : -1
-    if (cur === last) return
-    last = cur
+    if (vals.length === lastFrame.length) {
+      let same = true
+      for (let i = 0; i < vals.length; i++) if (vals[i] !== lastFrame[i]) { same = false; break }
+      if (same) return
+    }
+    lastFrame = vals
     area.queue_draw()
   })
 
