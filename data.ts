@@ -114,8 +114,7 @@ const netDownGraphBuf: number[] = INIT_GRAPH()
 const netUpGraphBuf: number[] = INIT_GRAPH()
 const diskReadGraphBuf: number[] = INIT_GRAPH()
 const diskWriteGraphBuf: number[] = INIT_GRAPH()
-function pushGraphBuf(buf: number[], val: number, get: () => number[], setter: (v: number[]) => void) {
-  if (buf[buf.length - 1] === val) return
+function pushGraphBuf(buf: number[], val: number, setter: (v: number[]) => void) {
   buf.push(val)
   buf.shift()
   setter([...buf])
@@ -489,6 +488,7 @@ function fastUpdateA() {
     const p = calcCpuPerc(stat)
     setIfChanged(cpuPerc, setCpuPerc, p)
     setIfChanged(cpuPercNorm, setCpuPercNorm, p / 100)
+    pushGraphBuf(cpuGraphBuf, p, setCpuGraphData)
     const cores = calcCorePercs(stat)
     setCorePercs(cores)
     const bars = cores.map((c, idx) => ({
@@ -512,11 +512,10 @@ function fastUpdateB() {
   try {
     collectNet()
     collectDiskSpeeds()
-    pushGraphBuf(cpuGraphBuf, cpuPerc(), cpuGraphData, setCpuGraphData)
-    pushGraphBuf(netDownGraphBuf, netDownSpeed(), netDownGraphData, setNetDownGraphData)
-    pushGraphBuf(netUpGraphBuf, netUpSpeed(), netUpGraphData, setNetUpGraphData)
-    pushGraphBuf(diskReadGraphBuf, diskReadSpeed(), diskReadGraphData, setDiskReadGraphData)
-    pushGraphBuf(diskWriteGraphBuf, diskWriteSpeed(), diskWriteGraphData, setDiskWriteGraphData)
+    pushGraphBuf(netDownGraphBuf, netDownSpeed(), setNetDownGraphData)
+    pushGraphBuf(netUpGraphBuf, netUpSpeed(), setNetUpGraphData)
+    pushGraphBuf(diskReadGraphBuf, diskReadSpeed(), setDiskReadGraphData)
+    pushGraphBuf(diskWriteGraphBuf, diskWriteSpeed(), setDiskWriteGraphData)
   } catch (e) { console.error("fast update B:", e) }
 }
 
