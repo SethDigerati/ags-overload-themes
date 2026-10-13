@@ -2,6 +2,7 @@ import { Gtk } from "ags/gtk4"
 import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
+import Gio from "gi://Gio?version=2.0"
 import { env, projectRoot } from "../config"
 
 const API_KEY = env.WEATHER_API_KEY || ""
@@ -163,6 +164,11 @@ async function fetchForecast() {
 }
 
 interval(600000, () => { fetchWeather().catch((e) => console.error("weather poll:", e)); fetchForecast().catch((e) => console.error("forecast poll:", e)) })
+Gio.NetworkMonitor.get_default()?.connect("network-changed", (_m: any, online: boolean) => {
+  if (!online) return
+  fetchWeather().catch((e) => console.error("weather poll:", e))
+  fetchForecast().catch((e) => console.error("forecast poll:", e))
+})
 fetchLocation().then(() => { fetchWeather(); fetchForecast() }).catch((e) => console.error("weather location:", e))
 
 export function WeatherBox() {
