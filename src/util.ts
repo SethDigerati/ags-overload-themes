@@ -1,9 +1,24 @@
 import GLib from "gi://GLib?version=2.0"
+import { execAsync } from "ags/process"
+
+const sharedDecoder = new TextDecoder()
+export { sharedDecoder }
+
+export function setIfChanged<T>(get: () => T, set: (v: T) => void, v: T): void {
+  if (get() !== v) set(v)
+}
+
+export async function execAsyncFast(argv: string[]): Promise<string> {
+  try {
+    const out = await execAsync(argv)
+    return (out ?? "").trim()
+  } catch { return "" }
+}
 
 export function readFile(path: string): string {
   try {
     const [ok, bytes] = GLib.file_get_contents(path)
-    if (ok) return new TextDecoder().decode(bytes).trim()
+    if (ok) return sharedDecoder.decode(bytes).trim()
   } catch { /* ignore */ }
   return ""
 }
@@ -21,7 +36,7 @@ export function exec(cmd: string | string[]): string {
     const [ok, stdout] = Array.isArray(cmd)
       ? GLib.spawn_sync(null, cmd, null, GLib.SpawnFlags.SEARCH_PATH, null)
       : GLib.spawn_command_line_sync(cmd)
-    if (ok && stdout) return new TextDecoder().decode(stdout).trim()
+    if (ok && stdout) return sharedDecoder.decode(stdout).trim()
   } catch { /* ignore */ }
   return ""
 }
