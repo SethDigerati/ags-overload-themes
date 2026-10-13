@@ -2,7 +2,15 @@ import { createState } from "ags"
 import { interval, timeout } from "ags/time"
 import { readFile, exec, setIfChanged, execAsyncFast } from "./src/util"
 import UPower from "gi://UPowerGlib?version=1.0"
+import Gio from "gi://Gio?version=2.0"
 import { defaultInterface } from "./config"
+
+const networkMonitor = Gio.NetworkMonitor.get_default()
+
+export function getNetworkAvailable(): boolean {
+  try { return networkMonitor.get_network_available() }
+  catch { return true }
+}
 
 function readSys(path: string): string {
   try { return readFile(path)?.trim() || "" }
@@ -351,7 +359,8 @@ function collectNetConns() {
 let _pingCache = { time: 0, latency: "N/A", loss: "0", jitter: "N/A" }
 const PING_INTERVAL = 15000
 
-function collectNetPing() {
+export function collectNetPing() {
+  try { if (!networkMonitor.get_network_available()) return } catch { /* assume online */ }
   const now = Date.now()
   if (now - _pingCache.time < PING_INTERVAL) return
   _pingCache.time = now
