@@ -287,8 +287,8 @@ function syncBattery(dev?: any) {
 }
 
 try { upClient.connect("device-changed", (_c: any, dev: any) => syncBattery(dev)) } catch { /* no device-changed on this UPower: per-device notify covers changes */ }
-upClient.connect("device-added", (_c: any, dev: any) => { _upBattery = null; syncBattery(dev) })
-upClient.connect("device-removed", () => { _upBattery = null; syncBattery() })
+try { upClient.connect("device-added", (_c: any, dev: any) => { _upBattery = null; syncBattery(dev) }) } catch { /* older UPower without device-added */ }
+try { upClient.connect("device-removed", () => { _upBattery = null; syncBattery() }) } catch { /* older UPower without device-removed */ }
 syncBattery()
 
 function collectNet() {
