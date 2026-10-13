@@ -1,11 +1,21 @@
 import { Gtk } from "ags/gtk4"
-import { createComputed } from "ags"
-import { createPoll } from "ags/time"
+import { createComputed, createState } from "ags"
+import { interval } from "ags/time"
+import GLib from "gi://GLib?version=2.0"
 import { kernel, uptime, batteryPerc, batteryStatus, batteryTech, batteryEnergy, batteryEnergyFull, batteryTime } from "../data"
 
-const weekday = createPoll("", 60000, "date '+%A'")
-const timeStr = createPoll("", 1000, "date '+%H:%M'")
-const dateStr = createPoll("", 86400000, "date '+%B %d'")
+const [weekday, setWeekday] = createState("")
+const [timeStr, setTimeStr] = createState("")
+const [dateStr, setDateStr] = createState("")
+
+function tickClock() {
+  const dt = GLib.DateTime.new_now_local()
+  setWeekday(dt.format("%A") ?? "")
+  setTimeStr(dt.format("%H:%M") ?? "")
+  setDateStr(dt.format("%B %d") ?? "")
+}
+interval(1000, tickClock)
+tickClock()
 
 export function SystemBox() {
   return (
