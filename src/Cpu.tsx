@@ -1,6 +1,6 @@
 import { Gtk } from "ags/gtk4"
 import { createComputed, For } from "ags"
-import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, coreRows, topProcs, cpuGraphData } from "../data"
+import { cpuPerc, cpuPercNorm, cpuModel, cpuFreq, cpuMaxFreq, cpuTemp, corePercs, coreRows, topProcs, cpuGraphData } from "../data"
 import { Graph } from "./Graph"
 import { Levelbar } from "./Levelbar"
 import { graphs } from "../config"
@@ -18,17 +18,21 @@ export function CpuBox() {
       </box>
       {graphs.cpu && <Graph data={cpuGraphData} width={399} height={50} className="cpu-graph" />}
       <box orientation={Gtk.Orientation.VERTICAL} spacing={2}>
-        <For each={coreRows}>{(row) => (
+        <For each={coreRows} id={(row) => row[0]?.idx ?? -1}>{(row) => (
           <box orientation={Gtk.Orientation.HORIZONTAL} spacing={4} homogeneous={true}>
-            {row.map((bar) => (
-              <box orientation={Gtk.Orientation.VERTICAL} spacing={2} halign={Gtk.Align.CENTER}>
-                <box widthRequest={22} heightRequest={22} class="cpu-gauge" overflow={Gtk.Overflow.HIDDEN}>
-                  <box hexpand={true} heightRequest={bar.h} valign={Gtk.Align.END}
-                    class={bar.cls} />
+            {row.map((bar) => {
+              const idx = bar.idx
+              return (
+                <box orientation={Gtk.Orientation.VERTICAL} spacing={2} halign={Gtk.Align.CENTER}>
+                  <box widthRequest={22} heightRequest={22} class="cpu-gauge" overflow={Gtk.Overflow.HIDDEN}>
+                    <box hexpand={true} valign={Gtk.Align.END}
+                      heightRequest={createComputed(() => Math.max(1, Math.round(((corePercs()[idx] ?? 0) / 100) * 20)))}
+                      cssClasses={createComputed(() => [(corePercs()[idx] ?? 0) >= 85 ? "cpu-yellow" : "cpu-white"])} />
+                  </box>
+                  <label wrap ellipsize={3} maxWidthChars={5} class="gray2" label={`CPU${idx + 1}`} xalign={0.5} />
                 </box>
-                <label wrap ellipsize={3} maxWidthChars={5} class="gray2" label={`CPU${bar.idx + 1}`} xalign={0.5} />
-              </box>
-            ))}
+              )
+            })}
           </box>
         )}</For>
       </box>
