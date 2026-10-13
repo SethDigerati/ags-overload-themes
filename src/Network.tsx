@@ -2,13 +2,14 @@ import { Gtk } from "ags/gtk4"
 import { createComputed } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
+import Gio from "gi://Gio?version=2.0"
 import {
   netIface, netStatus, netSSID, netBitrate, netSignal,
   netDownSpeed, netUpSpeed, netDownTotal, netUpTotal,
   netLocalIp, netLatency, netLoss, netJitter,
   netConnections, netInbound, netOutbound, netISP,
   netDownGraphData, netUpGraphData,
-  setNetISP,
+  setNetISP, collectNetPing,
   formatSpeed,
 } from "../data"
 import { Graph } from "./Graph"
@@ -30,6 +31,7 @@ function sanitizeISP(value: string): string {
 
 async function fetchISP() {
   try {
+    try { if (!monitor.get_network_available()) return } catch { /* assume online */ }
     const res = await fetch("https://ipinfo.io/org")
     if (res.status === 429) {
       if (ISP_RATE_LIMIT_MSG !== netISP()) setNetISP(ISP_RATE_LIMIT_MSG)
@@ -70,8 +72,14 @@ async function fetchISP() {
   } catch (e) { console.error("isp fetch:", e) }
 }
 
+const monitor = Gio.NetworkMonitor.get_default()
+
 interval(600000, () => fetchISP().catch((e) => console.error("isp poll:", e)))
 fetchISP().catch((e) => console.error("isp init:", e))
+
+monitor.connect("network-changed", (_m: any, available: boolean) => {
+  if (available) { fetchISP().catch(console.error); collectNetPing() }
+})
 
 export function NetworkBox() {
   return (
