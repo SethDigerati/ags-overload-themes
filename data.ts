@@ -1,6 +1,7 @@
 import { createState } from "ags"
 import { interval, timeout } from "ags/time"
 import { readFile, exec, setIfChanged, execAsyncFast } from "./src/util"
+import UPower from "gi://UPowerGlib?version=1.0"
 import { defaultInterface } from "./config"
 
 function readSys(path: string): string {
@@ -201,15 +202,94 @@ function collectGpu() {
   if (tz) { const t = parseFloat(tz.split("\n")[0]) / 1000; setGpuTemp(String(Math.round(t))) }
 }
 
-function collectBattery() {
-  if (!_batteryPath) { setBatteryPerc(-1); return }
-  setBatteryStatus(readSys(`${_batteryPath}/status`) || "N/A")
-  const now = readSys(`${_batteryPath}/energy_now`) || readSys(`${_batteryPath}/charge_now`) || "0"
-  setBatteryEnergy((parseInt(now) / 1000000).toFixed(2))
-  setBatteryPerc(Math.round((parseInt(now) / parseFloat(batteryEnergyFull())) * 100))
-  const pwr = parseInt(readSys(`${_batteryPath}/power_now`) || "0")
-  if (pwr > 0) { const h = parseInt(now) / pwr; setBatteryTime(`${Math.floor(h)}h ${Math.round((h % 1) * 60)}m`) }
+// ── Push battery updates from UPower signals (no poll) ──
+const upClient = UPower.Client.new()
+const _UP_BATTERY_KIND = Number((UPower as any)?.DeviceKind?.BATTERY ?? 2)
+const _hookedBatteryIds = new Set<string>()
+let _upBattery: any = null
+
+function upStateLabel(state: number): string {
+  switch (state) {
+    case 1: return "Charging"
+    case 2: return "Discharging"
+    case 3: return "Empty"
+    case 4: return "Full"
+    case 5: return "Not charging"
+    case 6: return "Discharging"
+    default: return "Unknown"
+  }
 }
+
+function formatUpTime(secs: number): string {
+  const h = secs / 3600
+  return `${Math.floor(h)}h ${Math.round((h % 1) * 60)}m`
+}
+
+function isUpBattery(d: any): boolean {
+  try {
+    if (Number(d.kind) !== _UP_BATTERY_KIND) return false
+    if (d.is_present === false) return false
+    return true
+  } catch { return false }
+}
+
+function findUpowerBattery(): any {
+  try {
+    if (_upBattery && isUpBattery(_upBattery)) return _upBattery
+  } catch { /* stale ref */ }
+  _upBattery = null
+  try {
+    // get_devices() keeps objects alive; get_devices2() hands back
+    // already-finalized wrappers on this UPower, so avoid it.
+    const devs: any[] = upClient.get_devices?.() ?? []
+    for (const d of devs || []) {
+      if (isUpBattery(d)) { _upBattery = d; return d }
+    }
+  } catch { /* ignore */ }
+  try {
+    const disp = upClient.get_display_device?.()
+    if (disp && isUpBattery(disp)) { _upBattery = disp; return disp }
+  } catch { /* ignore */ }
+  return null
+}
+
+function hookBatterySignals(b: any) {
+  try {
+    const id = String(b.native_path ?? "")
+    if (id && _hookedBatteryIds.has(id)) return
+    if (id) _hookedBatteryIds.add(id)
+    const resync = () => syncBattery(b)
+    for (const sig of ["notify::percentage", "notify::state", "notify::energy", "notify::time-to-empty", "notify::time-to-full"]) {
+      try { b.connect(sig, resync) } catch { /* ignore */ }
+    }
+  } catch { /* ignore */ }
+}
+
+function syncBattery(dev?: any) {
+  try {
+    let b: any = dev
+    if (b && !isUpBattery(b)) b = null
+    if (!b) b = findUpowerBattery()
+    if (!b) { setIfChanged(batteryPerc, setBatteryPerc, -1); return }
+    hookBatterySignals(b)
+    setIfChanged(batteryPerc, setBatteryPerc, Math.round(Number(b.percentage) || 0))
+    setIfChanged(batteryStatus, setBatteryStatus, upStateLabel(Number(b.state)))
+    const energy = Number(b.energy)
+    if (Number.isFinite(energy)) setIfChanged(batteryEnergy, setBatteryEnergy, energy.toFixed(2))
+    const state = Number(b.state)
+    const tte = Number(b.time_to_empty) || 0
+    const ttf = Number(b.time_to_full) || 0
+    if (state === 2 && tte > 0) setIfChanged(batteryTime, setBatteryTime, formatUpTime(tte))
+    else if ((state === 1 || state === 5) && ttf > 0) setIfChanged(batteryTime, setBatteryTime, formatUpTime(ttf))
+    else if (tte > 0) setIfChanged(batteryTime, setBatteryTime, formatUpTime(tte))
+    else if (ttf > 0) setIfChanged(batteryTime, setBatteryTime, formatUpTime(ttf))
+  } catch (e) { console.error("battery sync:", e) }
+}
+
+try { upClient.connect("device-changed", (_c: any, dev: any) => syncBattery(dev)) } catch { /* no device-changed on this UPower: per-device notify covers changes */ }
+upClient.connect("device-added", (_c: any, dev: any) => { _upBattery = null; syncBattery(dev) })
+upClient.connect("device-removed", () => { _upBattery = null; syncBattery() })
+syncBattery()
 
 function collectNet() {
   const iface = netIface()
@@ -420,7 +500,6 @@ async function slowUpdate() {
   if (_fetching) return
   _fetching = true
   try {
-    collectBattery()
     collectTemps()
     collectGpu()
     collectNetConns()
