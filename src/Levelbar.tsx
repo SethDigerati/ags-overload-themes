@@ -28,7 +28,13 @@ export function Levelbar({ value }: { value: () => number }) {
     }
   })
 
-  createEffect(() => { value(); area.queue_draw() })
+  let last = -1
+  createEffect(() => {
+    const v = value()
+    if (Math.abs(v - last) < 0.005) return
+    last = v
+    area.queue_draw()
+  })
 
   return area
 }

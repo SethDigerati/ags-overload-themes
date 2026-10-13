@@ -15,7 +15,8 @@ export function Graph({ data, width, height, reversed, className }: { data: () =
 
     const n = vals.length
     const step = w / (n - 1)
-    const max = Math.max(...vals, 1)
+    let max = 1
+    for (let i = 0; i < n; i++) if (vals[i] > max) max = vals[i]
     const yPos = (v: number) => reversed ? (v / max) * h : h - (v / max) * h
     const yOrigin = reversed ? 0 : h
 
@@ -53,7 +54,15 @@ export function Graph({ data, width, height, reversed, className }: { data: () =
     cr.stroke()
   })
 
-  createEffect(() => { data(); area.queue_draw() })
+  let last = -1
+  createEffect(() => {
+    const vals = data()
+    // skip redraw if latest sample unchanged (avoids Cairo cost on duplicate polls)
+    const cur = vals.length > 0 ? vals[vals.length - 1] : -1
+    if (cur === last) return
+    last = cur
+    area.queue_draw()
+  })
 
   return area
 }
