@@ -213,9 +213,10 @@ function collectGpu() {
 }
 
 // ── Push battery updates from UPower signals (no poll) ──
-const upClient = UPower.Client.new()
+let upClient: any = null
+try { upClient = UPower.Client.new() } catch { upClient = null }
 const _UP_BATTERY_KIND = Number((UPower as any)?.DeviceKind?.BATTERY ?? 2)
-const _hookedBatteryIds = new Set<string>()
+const _hookedBatteries = new Set<object>()
 let _upBattery: any = null
 
 function upStateLabel(state: number): string {
@@ -244,6 +245,7 @@ function isUpBattery(d: any): boolean {
 }
 
 function findUpowerBattery(): any {
+  if (!upClient) return null
   try {
     if (_upBattery && isUpBattery(_upBattery)) return _upBattery
   } catch { /* stale ref */ }
@@ -265,9 +267,8 @@ function findUpowerBattery(): any {
 
 function hookBatterySignals(b: any) {
   try {
-    const id = String(b.native_path ?? "")
-    if (id && _hookedBatteryIds.has(id)) return
-    if (id) _hookedBatteryIds.add(id)
+    if (_hookedBatteries.has(b)) return
+    _hookedBatteries.add(b)
     const resync = () => syncBattery(b)
     for (const sig of ["notify::percentage", "notify::state", "notify::energy", "notify::time-to-empty", "notify::time-to-full"]) {
       try { b.connect(sig, resync) } catch { /* ignore */ }
@@ -280,7 +281,19 @@ function syncBattery(dev?: any) {
     let b: any = dev
     if (b && !isUpBattery(b)) b = null
     if (!b) b = findUpowerBattery()
-    if (!b) { setIfChanged(batteryPerc, setBatteryPerc, -1); return }
+    if (!b) {
+      try {
+        if (!_batteryPath) _batteryPath = findBattery()
+        if (_batteryPath) {
+          const cap = readSys(`${_batteryPath}/capacity`)
+          if (cap) setIfChanged(batteryPerc, setBatteryPerc, parseInt(cap) || 0)
+          const st = readSys(`${_batteryPath}/status`)
+          if (st) setIfChanged(batteryStatus, setBatteryStatus, st)
+          if (cap || st) return
+        }
+      } catch { /* sysfs fallback best-effort */ }
+      setIfChanged(batteryPerc, setBatteryPerc, -1); return
+    }
     hookBatterySignals(b)
     setIfChanged(batteryPerc, setBatteryPerc, Math.round(Number(b.percentage) || 0))
     setIfChanged(batteryStatus, setBatteryStatus, upStateLabel(Number(b.state)))
@@ -296,9 +309,11 @@ function syncBattery(dev?: any) {
   } catch (e) { console.error("battery sync:", e) }
 }
 
-try { upClient.connect("device-changed", (_c: any, dev: any) => syncBattery(dev)) } catch { /* no device-changed on this UPower: per-device notify covers changes */ }
-try { upClient.connect("device-added", (_c: any, dev: any) => { _upBattery = null; syncBattery(dev) }) } catch { /* older UPower without device-added */ }
-try { upClient.connect("device-removed", () => { _upBattery = null; syncBattery() }) } catch { /* older UPower without device-removed */ }
+if (upClient) {
+  try { upClient.connect("device-changed", (_c: any, dev: any) => syncBattery(dev)) } catch { /* no device-changed on this UPower: per-device notify covers changes */ }
+  try { upClient.connect("device-added", (_c: any, dev: any) => { _upBattery = null; syncBattery(dev) }) } catch { /* older UPower without device-added */ }
+  try { upClient.connect("device-removed", () => { _upBattery = null; syncBattery() }) } catch { /* older UPower without device-removed */ }
+}
 syncBattery()
 
 function collectNet() {
