@@ -1,6 +1,6 @@
 import { createState } from "ags"
 import { interval } from "ags/time"
-import { readFile, exec } from "./src/util"
+import { readFile, exec, setIfChanged } from "./src/util"
 import { defaultInterface } from "./config"
 
 function readSys(path: string): string {
@@ -103,7 +103,8 @@ const netDownGraphBuf: number[] = INIT_GRAPH()
 const netUpGraphBuf: number[] = INIT_GRAPH()
 const diskReadGraphBuf: number[] = INIT_GRAPH()
 const diskWriteGraphBuf: number[] = INIT_GRAPH()
-function pushGraphBuf(buf: number[], val: number, setter: (v: number[]) => void) {
+function pushGraphBuf(buf: number[], val: number, get: () => number[], setter: (v: number[]) => void) {
+  if (buf[buf.length - 1] === val) return
   buf.push(val)
   buf.shift()
   setter([...buf])
@@ -158,11 +159,11 @@ function parseMem() {
   const free = d.MemFree + (d.Buffers || 0) + (d.Cached || 0)
   const used = total - free
   const perc = Math.round((used / total) * 100)
-  setMemPerc(perc); setMemTotal(formatBytes(total)); setMemUsed(formatBytes(used)); setMemFree(formatBytes(free))
+  setIfChanged(memPerc, setMemPerc, perc); setMemTotal(formatBytes(total)); setMemUsed(formatBytes(used)); setMemFree(formatBytes(free))
   setMemEasyFree(formatBytes(free + (d.SReclaimable || 0)))
   if (d.SwapTotal && d.SwapTotal > 0) {
     const su = d.SwapTotal - d.SwapFree
-    setSwapPerc(Math.round((su / d.SwapTotal) * 100))
+    setIfChanged(swapPerc, setSwapPerc, Math.round((su / d.SwapTotal) * 100))
     setSwapUsed(formatBytes(su)); setSwapFree(formatBytes(d.SwapFree)); setSwapMax(formatBytes(d.SwapTotal))
   }
 }
@@ -220,8 +221,8 @@ function collectNet() {
     const p = l.trim().split(/\s+/)
     const rx = parseInt(p[1]) || 0; const tx = parseInt(p[9]) || 0
     if (_prevRx === 0) { _prevRx = rx; _prevTx = tx; return }
-    setNetDownSpeed(Math.max(0, Math.round((rx - _prevRx) / 1024)))
-    setNetUpSpeed(Math.max(0, Math.round((tx - _prevTx) / 1024)))
+    setIfChanged(netDownSpeed, setNetDownSpeed, Math.max(0, Math.round((rx - _prevRx) / 1024)))
+    setIfChanged(netUpSpeed, setNetUpSpeed, Math.max(0, Math.round((tx - _prevTx) / 1024)))
     setNetDownTotal((rx / 1073741824).toFixed(2) + "GiB")
     setNetUpTotal((tx / 1073741824).toFixed(2) + "GiB")
     _prevRx = rx; _prevTx = tx
@@ -297,8 +298,8 @@ function collectDiskSpeeds() {
       if (p.length >= 14 && p[2] !== "loop" && !p[2].startsWith("ram") && !p[2].startsWith("zram") && /^[a-z]/.test(p[2])) {
         const r = parseInt(p[5]) || 0; const w = parseInt(p[9]) || 0
         if (_prevDiskRead === 0) { _prevDiskRead = r; _prevDiskWrite = w; break }
-        setDiskReadSpeed(Math.max(0, Math.round((r - _prevDiskRead) * 512 / 1024)))
-        setDiskWriteSpeed(Math.max(0, Math.round((w - _prevDiskWrite) * 512 / 1024)))
+        setIfChanged(diskReadSpeed, setDiskReadSpeed, Math.max(0, Math.round((r - _prevDiskRead) * 512 / 1024)))
+        setIfChanged(diskWriteSpeed, setDiskWriteSpeed, Math.max(0, Math.round((w - _prevDiskWrite) * 512 / 1024)))
         _prevDiskRead = r; _prevDiskWrite = w; break
       }
     }
@@ -309,7 +310,7 @@ function collectDiskUsage() {
   const df = run("df -h / 2>/dev/null | tail -1").trim()
   if (df) {
     const p = df.split(/\s+/)
-    if (p.length >= 6) { setDiskTotal(p[1]); setDiskUsed(p[2]); setDiskFree(p[3]); setDiskPerc(parseInt(p[4].replace("%", "")) || 0) }
+    if (p.length >= 6) { setDiskTotal(p[1]); setDiskUsed(p[2]); setDiskFree(p[3]); setIfChanged(diskPerc, setDiskPerc, parseInt(p[4].replace("%", "")) || 0) }
   }
 }
 
@@ -379,9 +380,9 @@ function fastUpdate() {
   try {
     const stat = readSys("/proc/stat")
     const p = calcCpuPerc(stat)
-    setCpuPerc(p)
-    pushGraphBuf(cpuGraphBuf, p, setCpuGraphData)
-    setCpuPercNorm(p / 100)
+    setIfChanged(cpuPerc, setCpuPerc, p)
+    pushGraphBuf(cpuGraphBuf, p, cpuGraphData, setCpuGraphData)
+    setIfChanged(cpuPercNorm, setCpuPercNorm, p / 100)
     const cores = calcCorePercs(stat)
     setCorePercs(cores)
     const bars = cores.map((c, idx) => ({
@@ -398,11 +399,11 @@ function fastUpdate() {
     collectSys()
     parseMem()
     collectNet()
-    pushGraphBuf(netDownGraphBuf, netDownSpeed(), setNetDownGraphData)
-    pushGraphBuf(netUpGraphBuf, netUpSpeed(), setNetUpGraphData)
+    pushGraphBuf(netDownGraphBuf, netDownSpeed(), netDownGraphData, setNetDownGraphData)
+    pushGraphBuf(netUpGraphBuf, netUpSpeed(), netUpGraphData, setNetUpGraphData)
     collectDiskSpeeds()
-    pushGraphBuf(diskReadGraphBuf, diskReadSpeed(), setDiskReadGraphData)
-    pushGraphBuf(diskWriteGraphBuf, diskWriteSpeed(), setDiskWriteGraphData)
+    pushGraphBuf(diskReadGraphBuf, diskReadSpeed(), diskReadGraphData, setDiskReadGraphData)
+    pushGraphBuf(diskWriteGraphBuf, diskWriteSpeed(), diskWriteGraphData, setDiskWriteGraphData)
   } catch (e) { console.error("fast update:", e) }
 }
 
