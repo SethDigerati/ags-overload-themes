@@ -33,6 +33,17 @@ const infoCache = new Map<string, { duration: string; playcount: string; artistP
 let _fetching = false
 let _runId = 0
 
+async function safeJson(res: any): Promise<any> {
+  if (!res || res.ok === false) return null
+  try {
+    const text = await res.text()
+    if (!text || !text.trim().startsWith("{")) return null
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
 function hashStr(s: string): string {
   let h = 5381
   for (let i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) >>> 0
@@ -92,7 +103,8 @@ async function enrich(track: Track): Promise<void> {
       fetch(`https://ws.audioscrobbler.com/2.0/?method=track.getInfo&artist=${encodeURIComponent(track.artist)}&track=${encodeURIComponent(track.track)}&api_key=${API_KEY}&format=json`),
       fetch(`https://ws.audioscrobbler.com/2.0/?method=artist.getInfo&artist=${encodeURIComponent(track.artist)}&user=${encodeURIComponent(USERNAME)}&api_key=${API_KEY}&format=json`),
     ])
-    const [infoData, artistData] = await Promise.all([infoRes.json(), artistRes.json()])
+    const [infoData, artistData] = await Promise.all([safeJson(infoRes), safeJson(artistRes)])
+    if (!infoData && !artistData) return
     if (infoData?.track?.duration) {
       const secs = Math.floor(parseInt(infoData.track.duration) / 1000)
       track.duration = `${Math.floor(secs / 60)}:${(secs % 60).toString().padStart(2, "0")}`
@@ -125,7 +137,8 @@ async function fetchLastfm() {
     const res = await fetch(
       `https://ws.audioscrobbler.com/2.0/?method=user.getrecenttracks&user=${encodeURIComponent(USERNAME)}&api_key=${API_KEY}&format=json&limit=4`
     )
-    const data = await res.json()
+    const data = await safeJson(res)
+    if (!data) return
     if (myId !== _runId) return
     if (!data?.recenttracks?.track) return
     const items = Array.isArray(data.recenttracks.track) ? data.recenttracks.track : [data.recenttracks.track]
