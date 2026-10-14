@@ -70,7 +70,7 @@ export function MemoryBox() {
         <label ellipsize={3} maxWidthChars={50} wrap class="gray2" xalign={0} hexpand
           label={createComputed(() => formatSpeed(diskReadSpeed()))} />
       </box>
-      {graphs.diskRead && <Graph data={diskReadGraphData} width={399} height={40} />}
+      {graphs.diskRead && <Graph data={diskReadGraphData} width={399} height={40} axis={graphs.diskRead && graphs.diskWrite ? "bottom" : "none"} />}
       {graphs.diskWrite && <Graph data={diskWriteGraphData} width={399} height={40} reversed />}
       <box>
         <label class="accent" xalign={1} widthRequest={70} label="Write : " />
