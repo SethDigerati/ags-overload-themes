@@ -1,10 +1,39 @@
 import { Gtk } from "ags/gtk4"
-import { createState, createComputed, For } from "ags"
-import { interval } from "ags/time"
+import { createState, createComputed, type Accessor } from "ags"
+import { timeout } from "ags/time"
 import { fetch } from "ags/fetch"
 import Gio from "gi://Gio?version=2.0"
-const coinIds = ["bitcoin", "ethereum", "solana", "ripple", "dogecoin", "cardano", "binancecoin", "tron", "avalanche-2", "chainlink", "polkadot", "litecoin"]
-const coinNames = ["BTC", "ETH", "SOL", "XRP", "DOGE", "ADA", "BNB", "TRX", "AVAX", "LINK", "DOT", "LTC"]
+import { createWebSocketStream, type WebSocketStreamHandle } from "./util"
+import { leftColumnWidgets, rightColumnWidgets } from "../config"
+
+type Asset = {
+  name: string
+  cur: string
+  pct1h: string
+  pct1d: string
+  pct1w: string
+  pct1m: string
+  pct1y: string
+}
+
+// Display order and the Binance market each row streams from.
+const MARKETS: Array<[string, string]> = [
+  ["BTCUSDT", "BTC"],
+  ["ETHUSDT", "ETH"],
+  ["SOLUSDT", "SOL"],
+  ["XRPUSDT", "XRP"],
+  ["DOGEUSDT", "DOGE"],
+  ["ADAUSDT", "ADA"],
+]
+const SYMBOL_NAME: Record<string, string> = Object.fromEntries(MARKETS.map(([s, n]) => [s, n]))
+
+// Coin ids, in the same order, for the historical 1h/1w/1m/1y columns.
+const CG_IDS = ["bitcoin", "ethereum", "solana", "ripple", "dogecoin", "cardano"]
+
+const ASSET_W = 50
+const PRICE_W = 66
+const PCT_W = 56
+
 const countryCurrency: Record<string, string> = {
   US: "USD", IN: "INR", GB: "GBP", JP: "JPY",
   DE: "EUR", FR: "EUR", IT: "EUR", ES: "EUR",
@@ -43,38 +72,144 @@ const currencySymbols: Record<string, string> = {
   PLN: "zł", CZK: "Kč", HUF: "Ft", DKK: "kr",
   ILS: "₪", PKR: "₨", BDT: "৳", NGN: "₦",
 }
+
 let locationCountry = ""
-async function fetchLocation() {
+async function fetchLocation(): Promise<void> {
   try {
     const res = await fetch("https://ipinfo.io/country")
     const text = await res.text()
     if (text) locationCountry = text.trim()
-  } catch {}
+  } catch { /* forex falls back to USD */ }
 }
-const [assets, setAssets] = createState<Array<{ name: string; cur: string; pct1h: string; pct1d: string; pct1w: string; pct1m: string; pct1y: string }>>(
-  coinNames.slice(0, 6).map((n) => ({ name: n, cur: "...", pct1h: "0", pct1d: "0", pct1w: "0", pct1m: "0", pct1y: "0" }))
-)
+
+function placeholder(name: string): Asset {
+  return { name, cur: "...", pct1h: "0", pct1d: "0", pct1w: "0", pct1m: "0", pct1y: "0" }
+}
+
+const [assets, setAssets] = createState<Asset[]>(MARKETS.map(([, n]) => placeholder(n)))
+const [live, setLive] = createState(false)
 const [forex, setForex] = createState("")
-async function fetchMarket() {
+/** Flips once either the ticker stream or the historical poll lands data. */
+export const [marketReady, setMarketReady] = createState(false)
+
+// One accessor per row: a ticker for one symbol re-renders only that row's
+// labels instead of rebuilding the whole table several times a second.
+const rows: Accessor<Asset>[] = MARKETS.map(([, name]) =>
+  createComputed(() => assets().find(a => a.name === name) ?? placeholder(name)),
+)
+
+function thousands(int: string): string {
+  return int.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
+}
+
+function formatPrice(raw: unknown): string {
+  const n = typeof raw === "number" ? raw : parseFloat(String(raw))
+  if (!Number.isFinite(n)) return "N/A"
+  if (n >= 1000) return `$${thousands(n.toFixed(2))}`
+  if (n >= 1) return `$${n.toFixed(2)}`
+  return `$${n.toFixed(4)}`
+}
+
+function fmtPct(raw: unknown, prev: string): string {
+  const n = Number(raw)
+  return Number.isFinite(n) ? n.toFixed(1) : prev
+}
+
+// ── Live prices: Binance ticker stream ──
+// Zero API keys, sub-second updates, and no REST polling to rate-limit.
+
+const BINANCE_URL =
+  `wss://stream.binance.com:9443/stream?streams=${MARKETS.map(([s]) => `${s.toLowerCase()}@ticker`).join("/")}`
+
+let stream: WebSocketStreamHandle | null = null
+
+function onTicker(raw: string): void {
+  let payload: { data?: Record<string, unknown> }
+  try { payload = JSON.parse(raw) }
+  catch { return } // one malformed frame must not kill the stream
+
+  const d = payload?.data
+  if (!d) return
+  const name = SYMBOL_NAME[String(d.s)] ?? String(d.s ?? "").replace(/USDT$/, "")
+  const idx = assets().findIndex(a => a.name === name)
+  if (idx < 0) return
+
+  const next = assets().slice()
+  next[idx] = {
+    ...next[idx],
+    cur: formatPrice(d.c),
+    pct1d: fmtPct(d.P, next[idx].pct1d),
+  }
+  setAssets(next)
+  setMarketReady(true)
+}
+
+function startStream(): void {
+  stream?.close()
+  stream = createWebSocketStream(
+    BINANCE_URL,
+    onTicker,
+    (e) => console.error("market stream:", e?.message ?? e),
+    (connected) => setLive(connected),
+  )
+}
+
+// ── History: CoinGecko, relaxed to 10 minutes with backoff ──
+
+const CG_INTERVAL = 600000
+const CG_BACKOFF_MIN = 10000
+const CG_BACKOFF_MAX = 600000
+const CG_BLOCK_MS = 30 * 60 * 1000
+
+let cgBlockedUntil = 0
+let cgBackoff = 0
+
+async function fetchCoinGecko(): Promise<void> {
+  if (Date.now() < cgBlockedUntil) return
+  const url =
+    `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${CG_IDS.join(",")}` +
+    `&price_change_percentage=1h,24h,7d,30d,1y&order=market_cap_desc`
   try {
-    const res = await fetch(
-      `https://api.coingecko.com/api/v3/coins/markets?vs_currency=usd&ids=${coinIds.join(",")}&price_change_percentage=1h,24h,7d,30d,1y&order=market_cap_desc`,
-      { headers: { "User-Agent": "ags-overload-themes/1.0" } }
-    )
+    const res = await fetch(url, { headers: { "User-Agent": "ags-overload-themes/1.0" } })
+    if (res.status === 429) {
+      cgBlockedUntil = Date.now() + CG_BLOCK_MS
+      console.warn("market: coingecko rate limited, pausing for 30min")
+      return
+    }
+    if (!res.ok) throw new Error(`HTTP ${res.status}`)
+
     const data = await res.json()
-    if (!data?.length) return
-    const updated = data.map((d: any, i: number) => ({
-      name: coinNames[i] || d.symbol.toUpperCase(),
-      cur: d.current_price ? `$${d.current_price.toLocaleString()}` : "N/A",
-      pct1h: (d.price_change_percentage_1h_in_currency ?? 0).toFixed(1),
-      pct1d: (d.price_change_percentage_24h ?? 0).toFixed(1),
-      pct1w: (d.price_change_percentage_7d_in_currency ?? 0).toFixed(1),
-      pct1m: (d.price_change_percentage_30d_in_currency ?? 0).toFixed(1),
-      pct1y: (d.price_change_percentage_1y_in_currency ?? 0).toFixed(1),
-    }))
-    setAssets(updated.slice(0, 6))
-    console.log("market: got", Math.min(updated.length, 6), "coins")
-  } catch (e) { console.error("market fetch:", e) }
+    if (!Array.isArray(data) || !data.length) return
+
+    const next = assets().slice()
+    let changed = false
+    for (const entry of data) {
+      const i = next.findIndex(a => a.name === String(entry.symbol).toUpperCase())
+      if (i < 0) continue
+      const prev = next[i]
+      next[i] = {
+        ...prev,
+        // cur and pct1d stay owned by the ticker stream
+        pct1h: fmtPct(entry.price_change_percentage_1h_in_currency, prev.pct1h),
+        pct1w: fmtPct(entry.price_change_percentage_7d_in_currency, prev.pct1w),
+        pct1m: fmtPct(entry.price_change_percentage_30d_in_currency, prev.pct1m),
+        pct1y: fmtPct(entry.price_change_percentage_1y_in_currency, prev.pct1y),
+      }
+      changed = true
+    }
+    if (!changed) return
+    setAssets(next)
+    cgBackoff = 0
+    setMarketReady(true)
+  } catch (e) {
+    cgBackoff = Math.min(cgBackoff ? cgBackoff * 2 : CG_BACKOFF_MIN, CG_BACKOFF_MAX)
+    console.error("market: coingecko failed:", e)
+  }
+}
+
+// ── Forex: fiat rates move too slowly to justify anything tighter ──
+
+async function fetchForex(): Promise<void> {
   try {
     const res = await fetch("https://open.er-api.com/v6/latest/USD")
     const data = await res.json()
@@ -99,78 +234,127 @@ async function fetchMarket() {
     setForex(parts.length > 0 ? parts.join("") : "...")
   } catch (e) { console.error("market forex:", e) }
 }
-interval(240000, () => fetchMarket().catch((e) => console.error("market poll:", e)))
-Gio.NetworkMonitor.get_default()?.connect("network-changed", (_m: any, online: boolean) => {
-  if (!online) return
-  fetchLocation().then(() => fetchMarket().catch((e) => console.error("market poll:", e))).catch((e) => console.error("market reconnect:", e))
-})
-fetchLocation().then(() => fetchMarket().catch((e) => console.error("market init:", e)))
-function Cell({ val }: { val: string }) {
-  const n = parseFloat(val)
-  if (n > 0) return (
-    <box widthRequest={60} spacing={0}>
-      <label wrap class="positive" label="▲" xalign={0} widthRequest={12} />
-      <label wrap ellipsize={3} maxWidthChars={6} class="gray2" label={`${val}%`} xalign={0} />
-    </box>
-  )
-  if (n < 0) return (
-    <box widthRequest={60} spacing={0}>
-      <label wrap class="negative" label="▼" xalign={0} widthRequest={12} />
-      <label wrap ellipsize={3} maxWidthChars={6} class="gray2" label={`${Math.abs(n).toFixed(1)}%`} xalign={0} />
-    </box>
-  )
+
+// Chained rather than interval-driven, so a failed cycle can back off without
+// ever stacking timers on top of the poll period.
+let remoteTimer: { cancel(): void } | null = null
+
+async function pollRemote(): Promise<void> {
+  await Promise.all([fetchCoinGecko(), fetchForex()])
+}
+
+function scheduleRemote(delay: number): void {
+  remoteTimer?.cancel()
+  remoteTimer = timeout(delay, () => {
+    pollRemote()
+      .catch((e) => console.error("market poll:", e))
+      .then(() => scheduleRemote(cgBackoff ? cgBackoff : CG_INTERVAL))
+  })
+}
+
+function PctHead({ label }: { label: string }) {
   return (
-    <box widthRequest={60} spacing={0}>
-      <label wrap class="gray2" label="─" xalign={0} widthRequest={12} />
-      <label wrap ellipsize={3} maxWidthChars={5} class="gray2" label="0.0%" xalign={0} />
+    <box widthRequest={PCT_W} spacing={0}>
+      <box widthRequest={12} />
+      <label wrap class="accent" label={label} xalign={0} />
     </box>
   )
 }
+
+function PctCell({ val }: { val: Accessor<string> }) {
+  const text = createComputed(() => {
+    const raw = val()
+    const n = parseFloat(raw)
+    if (n > 0) return { arrow: "▲", abs: false, text: `${raw}%` }
+    if (n < 0) return { arrow: "▼", abs: true, text: `${Math.abs(n).toFixed(1)}%` }
+    return { arrow: "─", abs: false, text: "0.0%" }
+  })
+
+  return (
+    <box widthRequest={PCT_W} spacing={0}>
+      <label
+        wrap
+        class={createComputed(() => text().abs ? "negative" : text().arrow === "▲" ? "positive" : "gray2")}
+        label={createComputed(() => text().arrow)}
+        xalign={0}
+        widthRequest={12}
+      />
+      <label
+        wrap
+        ellipsize={3}
+        maxWidthChars={5}
+        class="gray2"
+        label={createComputed(() => text().text)}
+        xalign={0}
+      />
+    </box>
+  )
+}
+
+function AssetRow({ row }: { row: Accessor<Asset> }) {
+  return (
+    <box widthRequest={399} spacing={5}>
+      <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="gray2"
+        label={createComputed(() => row().name)} widthRequest={ASSET_W} />
+      <label ellipsize={3} maxWidthChars={9} wrap xalign={1} class="gray2"
+        label={createComputed(() => row().cur)} widthRequest={PRICE_W} />
+      <PctCell val={createComputed(() => row().pct1h)} />
+      <PctCell val={createComputed(() => row().pct1d)} />
+      <PctCell val={createComputed(() => row().pct1w)} />
+      <PctCell val={createComputed(() => row().pct1m)} />
+      <PctCell val={createComputed(() => row().pct1y)} />
+    </box>
+  )
+}
+
 export function MarketBox() {
   return (
     <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-      <label wrap xalign={0} class="section-header" label="MARKET" />
+      <box>
+        <label wrap xalign={0} hexpand class="section-header" label="MARKET" />
+        <label
+          xalign={1}
+          label={createComputed(() => (live() ? "● LIVE" : "○ OFF"))}
+          cssClasses={createComputed(() => [live() ? "positive" : "gray3"])}
+        />
+      </box>
       <box class="hr-line" />
       <box spacing={5}>
-        <label wrap class="accent" label="ASSET" xalign={0} widthRequest={50} />
-        <box widthRequest={60} spacing={0}>
-          <box widthRequest={12} />
-          <label wrap class="accent" label="1h" xalign={0} />
-        </box>
-        <box widthRequest={60} spacing={0}>
-          <box widthRequest={12} />
-          <label wrap class="accent" label="1d" xalign={0} />
-        </box>
-        <box widthRequest={60} spacing={0}>
-          <box widthRequest={12} />
-          <label wrap class="accent" label="1w" xalign={0} />
-        </box>
-        <box widthRequest={60} spacing={0}>
-          <box widthRequest={12} />
-          <label wrap class="accent" label="1m" xalign={0} />
-        </box>
-        <box widthRequest={60} spacing={0}>
-          <box widthRequest={12} />
-          <label wrap class="accent" label="1y" xalign={0} />
-        </box>
+        <label wrap class="accent" label="ASSET" xalign={0} widthRequest={ASSET_W} />
+        <label wrap class="accent" label="PRICE" xalign={1} widthRequest={PRICE_W} />
+        <PctHead label="1h" />
+        <PctHead label="1d" />
+        <PctHead label="1w" />
+        <PctHead label="1m" />
+        <PctHead label="1y" />
       </box>
       <box class="hr-line" />
       <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-        <For each={assets}>
-          {(item) => (
-            <box widthRequest={399} spacing={5}>
-              <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="gray2" label={item.name} widthRequest={50} />
-              <Cell val={item.pct1h} />
-              <Cell val={item.pct1d} />
-              <Cell val={item.pct1w} />
-              <Cell val={item.pct1m} />
-              <Cell val={item.pct1y} />
-            </box>
-          )}
-        </For>
+        {rows.map((row, i) => <AssetRow key={String(i)} row={row} />)}
       </box>
       <box class="hr-line" />
       <label ellipsize={3} maxWidthChars={40} wrap class="gray3" label={createComputed(() => forex())} xalign={0.5} />
     </box>
   )
+}
+
+const visible = new Set([...rightColumnWidgets, ...leftColumnWidgets]).has("MarketBox")
+
+if (visible) {
+  startStream()
+  Gio.NetworkMonitor.get_default()?.connect("network-changed", (_m: any, online: boolean) => {
+    if (!online) return
+    // The stream owns its own reconnect; only the REST side needs nudging.
+    fetchLocation()
+      .then(() => pollRemote())
+      .catch((e) => console.error("market reconnect:", e))
+  })
+  // Geo-IP is optional context for the forex line and must never gate the
+  // price/history fetch, so the two run independently and forex re-renders
+  // once the country is known.
+  pollRemote().catch((e) => console.error("market init:", e))
+  fetchLocation()
+    .then(() => fetchForex())
+    .catch((e) => console.error("market location:", e))
+  scheduleRemote(CG_INTERVAL)
 }
