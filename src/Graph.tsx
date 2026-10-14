@@ -5,7 +5,7 @@ import Cairo from "gi://cairo"
 // Values are 0-100 percentages, so anything under half a point is invisible.
 const EPSILON = 0.5
 
-export function Graph({ data, width, height, reversed, className }: { data: () => number[]; width: number; height: number; reversed?: boolean; className?: string }) {
+export function Graph({ data, width, height, reversed, className, axis }: { data: () => number[]; width: number; height: number; reversed?: boolean; className?: string; axis?: "top" | "bottom" | "none" }) {
   const area = new Gtk.DrawingArea()
   area.set_size_request(width, height)
   area.hexpand = true
@@ -70,12 +70,14 @@ export function Graph({ data, width, height, reversed, className }: { data: () =
     cr.setSourceRGBA(1, 1, 1, 0.5)
     cr.stroke()
 
-    const axisY = reversed ? 0.5 : h - 0.5
-    cr.moveTo(0, axisY)
-    cr.lineTo(w, axisY)
-    cr.setLineWidth(1)
-    cr.setSourceRGBA(0.2, 0.2, 0.2, 0.9)
-    cr.stroke()
+    if (axis === "top" || axis === "bottom") {
+      const axisY = axis === "top" ? 0.5 : h - 0.5
+      cr.moveTo(0, axisY)
+      cr.lineTo(w, axisY)
+      cr.setLineWidth(1)
+      cr.setSourceRGBA(1, 0.88, 0.125, 0.18)
+      cr.stroke()
+    }
   })
 
   let lastFrame: number[] = []
