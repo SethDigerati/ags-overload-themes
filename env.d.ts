@@ -41,6 +41,7 @@ declare module "gi://GLib?version=2.0" {
   export function get_current_dir(): string
   export function get_home_dir(): string
   export function path_basename(path: string): string
+  export function unlink(path: string): number
   export function unsetenv(key: string): void
 
   export const SOURCE_REMOVE: boolean

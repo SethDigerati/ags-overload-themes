@@ -50,8 +50,18 @@ function hashStr(s: string): string {
   return h.toString(16)
 }
 
-function fileExists(path: string): boolean {
-  try { return GLib.file_test(path, GLib.FileTest.EXISTS) } catch { return false }
+function isValidImageFile(path: string): boolean {
+  try {
+    if (!GLib.file_test(path, GLib.FileTest.IS_REGULAR)) return false
+    const [ok, bytes] = GLib.file_get_contents(path)
+    if (!ok || !bytes || bytes.length < 1024) {
+      try { GLib.unlink(path) } catch { /* ignore */ }
+      return false
+    }
+    return true
+  } catch {
+    return false
+  }
 }
 
 // Largest usable artwork URL first; skips empties and the stock placeholder.
@@ -70,22 +80,52 @@ function coverPathFor(artist: string, track: string): string {
   return `${DATA_DIR}/cover_${hashStr(`${artist}|${track}`)}.jpg`
 }
 
-// Fallback chain: try each available size largest-first; "" renders the
-// empty .cover-img box in the UI.
-async function resolveCover(artist: string, track: string, t: any): Promise<string> {
-  const dest = coverPathFor(artist, track)
-  if (fileExists(dest)) return dest
-  for (const url of pickImageUrls(t)) {
-    try {
-      const imgRes = await fetch(url)
-      const imgBytes = await imgRes.bytes()
-      const arr = imgBytes?.toArray()
-      if (arr && arr.length > 0) {
-        writeFile(dest, arr)
-        return dest
-      }
-    } catch (e) { console.error("lastfm image download:", e) }
+async function fetchItunesCover(artist: string, track: string, album: string): Promise<string> {
+  try {
+    const query = album && album !== "Unknown" ? `${artist} ${album}` : `${artist} ${track}`
+    const res = await fetch(`https://itunes.apple.com/search?term=${encodeURIComponent(query)}&entity=song&limit=1`)
+    const data = await safeJson(res)
+    const url = data?.results?.[0]?.artworkUrl100
+    if (url) return String(url).replace("100x100bb", "300x300bb")
+  } catch { /* ignore */ }
+  return ""
+}
+
+async function downloadAndCache(url: string, dest: string): Promise<string> {
+  if (!url || url.includes(NO_ART_HASH)) return ""
+  try {
+    const res = await fetch(url)
+    if (!res || res.ok === false) return ""
+    const bytes = await res.bytes()
+    const arr = bytes?.toArray()
+    if (arr && arr.length > 1024) {
+      writeFile(dest, arr)
+      return dest
+    }
+  } catch (e) {
+    console.error("cover download error:", e)
   }
+  return ""
+}
+
+// Multi-tier resolution: per-track file is reused only when valid, otherwise
+// recenttracks payload first, iTunes fallback second. Album art from
+// track.getInfo is handled in enrich() where infoData is available.
+async function resolveCover(artist: string, track: string, album: string, t: any): Promise<string> {
+  const dest = coverPathFor(artist, track)
+  if (isValidImageFile(dest)) return dest
+
+  for (const url of pickImageUrls(t)) {
+    const path = await downloadAndCache(url, dest)
+    if (path) return path
+  }
+
+  const itunesUrl = await fetchItunesCover(artist, track, album)
+  if (itunesUrl) {
+    const path = await downloadAndCache(itunesUrl, dest)
+    if (path) return path
+  }
+
   return ""
 }
 
@@ -111,6 +151,16 @@ async function enrich(track: Track): Promise<void> {
     }
     if (infoData?.track?.userplaycount) track.playcount = infoData.track.userplaycount
     if (artistData?.artist?.stats?.userplaycount) track.artistPlaycount = artistData.artist.stats.userplaycount
+    if (!track.image && infoData?.track?.album) {
+      const dest = coverPathFor(track.artist, track.track)
+      for (const url of pickImageUrls(infoData.track.album)) {
+        const path = await downloadAndCache(url, dest)
+        if (path) {
+          track.image = path
+          break
+        }
+      }
+    }
   } catch (e) { console.error("lastfm track info:", e) }
   infoCache.set(key, { duration: track.duration, playcount: track.playcount, artistPlaycount: track.artistPlaycount })
 }
@@ -142,7 +192,7 @@ async function fetchLastfm() {
     if (myId !== _runId) return
     if (!data?.recenttracks?.track) return
     const items = Array.isArray(data.recenttracks.track) ? data.recenttracks.track : [data.recenttracks.track]
-    if (tracks().length > 0 && tracks()[0].isNowPlaying) {
+    if (tracks().length > 0 && tracks()[0].isNowPlaying && tracks()[0].image) {
       const first = items[0]
       if (first?.["@attr"]?.nowplaying === "true" &&
           `${first.artist?.["#text"]}|${first.name}` === `${tracks()[0].artist}|${tracks()[0].track}`)
@@ -156,14 +206,15 @@ async function fetchLastfm() {
         const t = items[i]
         const artist = t.artist?.["#text"] || "Unknown"
         const track = t.name || "Unknown"
+        const album = t.album?.["#text"] || "Unknown"
         return {
           artist,
           track,
-          album: t.album?.["#text"] || "Unknown",
+          album,
           duration: "-",
           playcount: "-",
           artistPlaycount: "-",
-          image: await resolveCover(artist, track, t),
+          image: await resolveCover(artist, track, album, t),
           isNowPlaying: t["@attr"]?.nowplaying === "true",
         }
       })())
@@ -207,14 +258,38 @@ export function LastFmBox() {
       <box class="hr-line" />
       <label ellipsize={3} maxWidthChars={40} wrap class="accent" label={createComputed(() => nowPlaying())} xalign={0} />
       <For each={tracks}>
-        {(item, idx) => (
-          <box orientation={Gtk.Orientation.VERTICAL}>
-            <box>
-              {item.image ? (
-                <image class="cover-img" file={item.image} pixelSize={idx.peek() === 0 ? 100 : 80} />
-              ) : (
-                <box class="cover-img" widthRequest={idx.peek() === 0 ? 100 : 80} heightRequest={idx.peek() === 0 ? 100 : 80} />
-              )}
+        {(item, idx) => {
+          const size = idx.peek() === 0 ? 100 : 80
+          return (
+            <box orientation={Gtk.Orientation.VERTICAL}>
+              <box>
+                <box
+                  class={item.image ? "cover-img" : "cover-img cover-placeholder"}
+                  widthRequest={size}
+                  heightRequest={size}
+                  halign={Gtk.Align.START}
+                  valign={Gtk.Align.CENTER}
+                >
+                  {item.image ? (
+                    <image
+                      file={item.image}
+                      pixelSize={size}
+                      halign={Gtk.Align.CENTER}
+                      valign={Gtk.Align.CENTER}
+                    />
+                  ) : (
+                    <label
+                      class="gray3"
+                      label="♪"
+                      widthRequest={size}
+                      heightRequest={size}
+                      halign={Gtk.Align.CENTER}
+                      valign={Gtk.Align.CENTER}
+                      xalign={0.5}
+                      yalign={0.5}
+                    />
+                  )}
+                </box>
               <box class="track-details" orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
                 <box>
                   <label class="accent" label="Track: " xalign={0} />
@@ -243,8 +318,9 @@ export function LastFmBox() {
               </box>
             </box>
             {idx.peek() === 0 && <box class="hr-line" />}
-          </box>
-        )}
+            </box>
+          )
+        }}
       </For>
     </box>
   )
