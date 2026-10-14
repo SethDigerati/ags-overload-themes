@@ -4,16 +4,52 @@ import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
 import Gio from "gi://Gio?version=2.0"
 import { env, projectRoot } from "../config"
+import { readFile, writeFile } from "./util"
 
 const API_KEY = env.WEATHER_API_KEY || ""
 const ICON_DIR = `${projectRoot}/assets/icons/`
+const LOCATION_CACHE = "/tmp/ags/weather/location.json"
 
 const CARDINALS = ["N", "NNE", "NE", "ENE", "E", "ESE", "SE", "SSE",
                    "S", "SSW", "SW", "WSW", "W", "WNW", "NW", "NNW"]
 const ARROWS = ["↑", "↗", "→", "↘", "↓", "↙", "←", "↖"]
 
-const [location, setLocation] = createState({ city: "Loading...", country: "" })
-const [latLon, setLatLon] = createState({ lat: "", lon: "" })
+function loadCachedLocation(): { city: string; country: string; lat: string; lon: string } | null {
+  try {
+    const raw = readFile(LOCATION_CACHE)
+    if (!raw) return null
+    const data = JSON.parse(raw)
+    if (data && data.lat && data.lon) {
+      return {
+        city: data.city || "Cached",
+        country: data.country || "",
+        lat: String(data.lat),
+        lon: String(data.lon),
+      }
+    }
+  } catch { /* ignore corrupt cache */ }
+  return null
+}
+
+function seedLocation(): { city: string; country: string } {
+  if (env.WEATHER_LAT && env.WEATHER_LON) {
+    return { city: env.WEATHER_CITY || "Custom", country: "" }
+  }
+  return loadCachedLocation() ?? { city: "Loading...", country: "" }
+}
+
+function seedLatLon(): { lat: string; lon: string } {
+  if (env.WEATHER_LAT && env.WEATHER_LON) {
+    return { lat: String(env.WEATHER_LAT), lon: String(env.WEATHER_LON) }
+  }
+  const cached = loadCachedLocation()
+  if (cached) return { lat: cached.lat, lon: cached.lon }
+  return { lat: "", lon: "" }
+}
+
+const [location, setLocation] = createState(seedLocation())
+const [latLon, setLatLon] = createState(seedLatLon())
+export const [weatherReady, setWeatherReady] = createState(false)
 const [weather, setWeather] = createState({
   temp: "N/A", tempMin: "N/A", tempMax: "N/A",
   humidity: "N/A", pressure: "N/A", description: "Unknown",
@@ -66,21 +102,100 @@ const moon = createComputed(() => {
   return phases[idx]
 })
 
+async function safeJson(res: any): Promise<any> {
+  if (!res || res.ok === false) return null
+  try {
+    const text = await res.text()
+    if (!text || !text.trim().startsWith("{")) return null
+    return JSON.parse(text)
+  } catch {
+    return null
+  }
+}
+
+function persistLocation(city: string, country: string, lat: string, lon: string) {
+  setLocation({ city, country })
+  setLatLon({ lat, lon })
+  try {
+    writeFile(LOCATION_CACHE, JSON.stringify({ city, country, lat, lon }))
+  } catch (e) { console.error("weather cache write:", e) }
+}
+
 async function fetchLocation() {
+  // Tier 0: manual override from .env — no network needed
+  if (env.WEATHER_LAT && env.WEATHER_LON) {
+    const lat = String(env.WEATHER_LAT)
+    const lon = String(env.WEATHER_LON)
+    console.log("weather: using manual override location", lat, lon)
+    persistLocation(env.WEATHER_CITY || "Custom", "", lat, lon)
+    return
+  }
+  // Tier 1: ipinfo.io
   try {
     console.log("weather: fetching location from ipinfo")
-    const res = await fetch("https://ipinfo.io/json")
-    const data = await res.json()
-    if (!data || !data.city) {
-      throw new Error("Invalid ipinfo response: " + JSON.stringify(data))
+    const data = await safeJson(await fetch("https://ipinfo.io/json").catch(() => null))
+    if (data?.city && data?.loc) {
+      const [lat, lon] = String(data.loc).split(",")
+      if (lat && lon) {
+        console.log("weather: got location (ipinfo)", data.city, data.country, data.loc)
+        persistLocation(data.city || "Unknown", data.country || "", lat.trim(), lon.trim())
+        return
+      }
     }
-    console.log("weather: got location", data.city, data.country, data.loc)
-    setLocation({ city: data.city || "Unknown", country: data.country || "" })
-    if (data.loc) { const [lat, lon] = data.loc.split(","); setLatLon({ lat, lon }) }
-  } catch (e) {
-    console.error("weather ipinfo error:", e)
-    setLocation({ city: "Location Error", country: "" })
+    console.log("weather: ipinfo failed, trying fallback")
+  } catch (e) { console.error("weather ipinfo error:", e) }
+  // Tier 2: freeipapi (note: canonical host is free.freeipapi.com)
+  try {
+    console.log("weather: fetching location from freeipapi")
+    const data = await safeJson(await fetch("https://free.freeipapi.com/api/v1/json").catch(() => null))
+    if (data?.latitude && data?.longitude) {
+      console.log("weather: got location (freeipapi)", data.cityName, data.countryName)
+      persistLocation(
+        data.cityName || "Unknown", data.countryName || "",
+        String(data.latitude), String(data.longitude),
+      )
+      return
+    }
+    console.log("weather: freeipapi failed, trying fallback")
+  } catch (e) { console.error("weather freeipapi error:", e) }
+  // Tier 3: ipapi.co
+  try {
+    console.log("weather: fetching location from ipapi.co")
+    const data = await safeJson(await fetch("https://ipapi.co/json/").catch(() => null))
+    if (data?.latitude && data?.longitude) {
+      console.log("weather: got location (ipapi.co)", data.city, data.country_name)
+      persistLocation(
+        data.city || "Unknown", data.country_name || "",
+        String(data.latitude), String(data.longitude),
+      )
+      return
+    }
+    console.log("weather: ipapi.co failed, trying fallback")
+  } catch (e) { console.error("weather ipapi.co error:", e) }
+  // Tier 3b: ipwho.is (same shape, generous free tier)
+  try {
+    console.log("weather: fetching location from ipwho.is")
+    const data = await safeJson(await fetch("https://ipwho.is/").catch(() => null))
+    if (data?.success !== false && data?.latitude && data?.longitude) {
+      console.log("weather: got location (ipwho.is)", data.city, data.country)
+      persistLocation(
+        data.city || "Unknown", data.country || "",
+        String(data.latitude), String(data.longitude),
+      )
+      return
+    }
+    console.log("weather: ipwho.is failed, trying cache")
+  } catch (e) { console.error("weather ipwho.is error:", e) }
+  // Tier 4: last known disk cache
+  const cached = loadCachedLocation()
+  if (cached) {
+    console.log("weather: using cached location", cached.city, cached.lat, cached.lon)
+    setLocation({ city: cached.city, country: cached.country })
+    setLatLon({ lat: cached.lat, lon: cached.lon })
+    return
   }
+  console.error("weather: all location tiers failed")
+  setLocation({ city: "Location Error", country: "" })
 }
 
 async function fetchWeather() {
@@ -88,16 +203,20 @@ async function fetchWeather() {
   if (!latLon().lat) { console.log("weather: no latLon, skipping fetch"); return }
   console.log("weather: fetching weather for", latLon().lat, latLon().lon)
   try {
-    const res = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latLon().lat}&lon=${latLon().lon}&appid=${API_KEY}&units=metric`)
-    const data = await res.json()
+    const data = await safeJson(await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latLon().lat}&lon=${latLon().lon}&appid=${API_KEY}&units=metric`).catch(() => null))
+    if (!data) { console.error("weather: empty/invalid API response"); return }
     if (data.cod === 200) {
       const w = data.weather[0]
       const isDay = w.icon.endsWith("d")
       const windDeg = data.wind.deg || 0
       console.log("weather: got data", data.main.temp, w.description)
       if (`${Math.round(data.main.temp)}|${w.description.replace(/\b\w/g, (c: string) => c.toUpperCase())}`
-          === `${weather().temp}|${weather().description}`) return
+          === `${weather().temp}|${weather().description}`) {
+        if (weather().temp !== "N/A") setWeatherReady(true)
+        return
+      }
       setWeather({
+        ...weather(),
         temp: Math.round(data.main.temp).toString(),
         tempMin: Math.round(data.main.temp_min).toString(),
         tempMax: Math.round(data.main.temp_max).toString(),
@@ -112,6 +231,7 @@ async function fetchWeather() {
         icon: mapWeatherIcon(w.id, isDay),
         updateTime: new Date().toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit" }),
       })
+      setWeatherReady(true)
     } else {
       console.error("weather: API returned error", data.cod, data.message)
     }
@@ -122,9 +242,8 @@ async function fetchForecast() {
   if (!API_KEY || !latLon().lat) { console.log("weather: no latLon for forecast"); return }
   console.log("weather: fetching forecast")
   try {
-    const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${latLon().lat}&lon=${latLon().lon}&appid=${API_KEY}&units=metric`)
-    const data = await res.json()
-    if (!data.list) { console.error("weather: forecast no list", data); return }
+    const data = await safeJson(await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${latLon().lat}&lon=${latLon().lon}&appid=${API_KEY}&units=metric`).catch(() => null))
+    if (!data?.list) { console.error("weather: forecast no list", data); return }
     console.log("weather: got forecast", data.list.length, "entries")
 
     const todayPop = data.list[0] ? Math.round((data.list[0].pop || 0) * 100).toString() : "0"
@@ -163,12 +282,21 @@ async function fetchForecast() {
   } catch (e) { console.error("weather forecast:", e) }
 }
 
-interval(600000, () => { fetchWeather().catch((e) => console.error("weather poll:", e)); fetchForecast().catch((e) => console.error("forecast poll:", e)) })
+async function updateWeather() {
+  if (!latLon().lat) {
+    await fetchLocation()
+  }
+  if (latLon().lat) {
+    await Promise.all([fetchWeather(), fetchForecast()])
+  }
+}
+
+interval(600000, () => { updateWeather().catch((e) => console.error("weather poll:", e)) })
 Gio.NetworkMonitor.get_default()?.connect("network-changed", (_m: any, online: boolean) => {
   if (!online) return
-  fetchLocation().then(() => { fetchWeather(); fetchForecast() }).catch((e) => console.error("weather reconnect:", e))
+  updateWeather().catch((e) => console.error("weather reconnect:", e))
 })
-fetchLocation().then(() => { fetchWeather(); fetchForecast() }).catch((e) => console.error("weather location:", e))
+updateWeather().catch((e) => console.error("weather location:", e))
 
 export function WeatherBox() {
   return (
