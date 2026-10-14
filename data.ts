@@ -1,8 +1,9 @@
 import { createState } from "ags"
 import { interval, timeout } from "ags/time"
-import { readFile, exec, setIfChanged, execAsyncFast } from "./src/util"
+import { readFile, setIfChanged, execAsyncFast, execAsyncRaw } from "./src/util"
 import UPower from "gi://UPowerGlib?version=1.0"
 import Gio from "gi://Gio?version=2.0"
+import GLib from "gi://GLib?version=2.0"
 import { defaultInterface, rightColumnWidgets, leftColumnWidgets } from "./config"
 
 const visible = new Set([...rightColumnWidgets, ...leftColumnWidgets])
@@ -19,15 +20,53 @@ function readSys(path: string): string {
   catch { return "" }
 }
 
-function run(cmd: string): string {
-  try { return exec(["bash", "-c", cmd]) || "" }
-  catch { return "" }
+function listDir(path: string): string[] {
+  const out: string[] = []
+  try {
+    const dir = GLib.Dir.open(path, 0)
+    if (!dir) return out
+    try {
+      let name = dir.read_name()
+      while (name !== null) {
+        if (name !== "." && name !== "..") out.push(name)
+        name = dir.read_name()
+      }
+    } finally { dir.close() }
+  } catch { /* ignore */ }
+  return out
+}
+
+/** Reproduce the `awk` tree that lsblk output used to be piped through. */
+function dashes(n: number): string {
+  return n > 0 ? "-".repeat(n) : ""
+}
+
+function formatLsblk(out: string): string {
+  const lines: string[] = []
+  for (const raw of out.split("\n")) {
+    const parts = raw.trim().split(/\s+/)
+    if (parts.length < 3) continue
+    const [name, size, type] = parts
+    if (type === "disk" || type === "rom") {
+      let n = `->${name}`
+      n += dashes(17 - n.length)
+      lines.push(`${n}(${size})`)
+    } else if (type === "part") {
+      let mnt = parts[3] || ""
+      if (mnt.length > 20) mnt = `${mnt.slice(0, 17)}...`
+      let n = `  └--${name}`
+      n += dashes(17 - n.length)
+      const l = `${n}(${size})`
+      lines.push(mnt ? `${l}${dashes(27 - l.length)}--${mnt}` : l)
+    }
+  }
+  return lines.join("\n")
 }
 
 export const [cpuPerc, setCpuPerc] = createState(0)
 export const [cpuPercNorm, setCpuPercNorm] = createState(0)
 export const [cpuLoads, setCpuLoads] = createState("0.00 0.00 0.00")
-export const [cpuModel, setCpuModel] = createState("N/A")
+export const [cpuModel, setCpuModel] = createState("Loading...")
 export const [cpuFreq, setCpuFreq] = createState("N/A")
 export const [cpuMaxFreq, setCpuMaxFreq] = createState("N/A")
 export const [cpuTemp, setCpuTemp] = createState("N/A")
@@ -54,8 +93,8 @@ export const [swapUsed, setSwapUsed] = createState("0")
 export const [swapFree, setSwapFree] = createState("0")
 export const [swapMax, setSwapMax] = createState("0")
 
-export const [gpuModel, setGpuModel] = createState("N/A")
-export const [gpuDriver, setGpuDriver] = createState("N/A")
+export const [gpuModel, setGpuModel] = createState("Loading...")
+export const [gpuDriver, setGpuDriver] = createState("Loading...")
 export const [gpuType, setGpuType] = createState("N/A")
 export const [gpuMemUsed, setGpuMemUsed] = createState("0")
 export const [gpuMemTotal, setGpuMemTotal] = createState("0")
@@ -87,7 +126,7 @@ export const [diskTotal, setDiskTotal] = createState("0")
 export const [diskPerc, setDiskPerc] = createState(0)
 export const [diskReadSpeed, setDiskReadSpeed] = createState(0)
 export const [diskWriteSpeed, setDiskWriteSpeed] = createState(0)
-export const [storageDevices, setStorageDevices] = createState("")
+export const [storageDevices, setStorageDevices] = createState("Loading...")
 
 export const [batteryPerc, setBatteryPerc] = createState(-1)
 export const [batteryStatus, setBatteryStatus] = createState("N/A")
@@ -96,14 +135,19 @@ export const [batteryEnergy, setBatteryEnergy] = createState("N/A")
 export const [batteryEnergyFull, setBatteryEnergyFull] = createState("N/A")
 export const [batteryTime, setBatteryTime] = createState("N/A")
 
-export const [kernel, setKernel] = createState("N/A")
+export const [kernel, setKernel] = createState("Loading...")
 export const [uptime, setUptime] = createState("N/A")
+
+/** Flips true once the one-time hardware discovery finishes. */
+export const [hwReady, setHwReady] = createState(false)
 
 let prevCpuIdle = 0, prevCpuTotal = 0
 let prevCoreIdle: number[] = []
 let prevCoreTotal: number[] = []
 let _prevRx = 0, _prevTx = 0, _prevDiskRead = 0, _prevDiskWrite = 0
-const NCPUS = parseInt(run("nproc")) || 1
+const NCPUS = (() => {
+  try { return GLib.get_num_processors() || 1 } catch { return 1 }
+})()
 let _batteryPath = ""
 let _card = ""
 let _vendor = ""
@@ -179,36 +223,73 @@ function parseMem() {
 }
 
 function findBattery(): string {
-  const ls = exec("ls /sys/class/power_supply/ 2>/dev/null")
-  for (const e of ls.split("\n")) {
+  for (const e of listDir("/sys/class/power_supply")) {
     if (readSys(`/sys/class/power_supply/${e}/type`) === "Battery")
       return `/sys/class/power_supply/${e}`
   }
   return ""
 }
 
-function findDrmCard(): string {
+/** The DRM card's sysfs path plus its PCI address (e.g. `0000:00:02.0`). */
+function findDrmCard(): { path: string; pci: string } | null {
   for (let i = 0; i < 8; i++) {
-    const v = readSys(`/sys/class/drm/card${i}/device/vendor`)
-    if (v) return `/sys/class/drm/card${i}`
+    const base = `/sys/class/drm/card${i}`
+    if (!readSys(`${base}/device/vendor`)) continue
+    let pci = ""
+    try {
+      const name = (GLib.file_read_link(`${base}/device`) || "").split("/").pop() || ""
+      if (/^[0-9a-f]{4}:[0-9a-f]{2}:[0-9a-f]{2}\.[0-9a-f]$/i.test(name)) pci = name
+    } catch { /* no PCI address exposed */ }
+    return { path: base, pci }
   }
-  return ""
+  return null
 }
 
-function collectGpu() {
-  if (!_card) return
-  const cur = readSys(`${_card}/gt_cur_freq_mhz`) || readSys(`${_card}/gt_act_freq_mhz`) || ""
-  if (cur) setGpuFreqCur(cur.trim())
-  if (_vendor === "0x10de") {
-    const smi = run("nvidia-smi --query-gpu=memory.used,memory.total --format=csv,noheader,nounits 2>/dev/null").trim()
-    const m = smi.match(/([\d.]+),\s*([\d.]+)/)
-    if (m) { setGpuMemUsed(m[1]); setGpuMemTotal(m[2]) }
-  } else if (_vendor === "0x1002") {
-    const vramUsed = readSys(`${_card}/device/mem_info_vram_used`)
-    if (vramUsed) setGpuMemUsed(String(Math.round(parseInt(vramUsed) / 1048576)))
+/** Kernel driver bound to a PCI device, via its `device/driver` symlink. */
+function readDriverName(devicePath: string): string {
+  try {
+    const link = GLib.file_read_link(`${devicePath}/driver`) || ""
+    return link.split("/").filter(Boolean).pop() || ""
+  } catch { return "" }
+}
+
+const GPU_THERMAL_HINTS = ["amdgpu", "i915", "nouveau", "nvidia", "x86_pkg_temp"]
+
+function readGpuThermal(): number | null {
+  for (const entry of listDir("/sys/class/thermal")) {
+    if (!entry.startsWith("thermal_zone")) continue
+    const base = `/sys/class/thermal/${entry}`
+    const type = readSys(`${base}/type`).toLowerCase()
+    if (!GPU_THERMAL_HINTS.some(h => type.includes(h))) continue
+    const t = parseFloat(readSys(`${base}/temp`))
+    if (Number.isFinite(t)) return t / 1000
   }
-  const tz = run("for z in /sys/class/thermal/thermal_zone*; do [ -f $z/type ] && grep -qE 'amdgpu|i915|nouveau|nvidia|x86_pkg_temp' $z/type 2>/dev/null && cat $z/temp; done 2>/dev/null").trim()
-  if (tz) { const t = parseFloat(tz.split("\n")[0]) / 1000; setGpuTemp(String(Math.round(t))) }
+  return null
+}
+
+let _gpuBusy = false
+
+async function collectGpuAsync(): Promise<void> {
+  if (!_card || _gpuBusy) return
+  _gpuBusy = true
+  try {
+    const cur = readSys(`${_card}/gt_cur_freq_mhz`) || readSys(`${_card}/gt_act_freq_mhz`) || ""
+    if (cur) setGpuFreqCur(cur.trim())
+    if (_vendor === "0x10de") {
+      const smi = await execAsyncFast([
+        "nvidia-smi", "--query-gpu=memory.used,memory.total",
+        "--format=csv,noheader,nounits",
+      ])
+      const m = smi.match(/([\d.]+),\s*([\d.]+)/)
+      if (m) { setGpuMemUsed(m[1]); setGpuMemTotal(m[2]) }
+    } else if (_vendor === "0x1002") {
+      const vramUsed = readSys(`${_card}/device/mem_info_vram_used`)
+      if (vramUsed) setGpuMemUsed(String(Math.round(parseInt(vramUsed) / 1048576)))
+    }
+    const t = readGpuThermal()
+    if (t !== null) setGpuTemp(String(Math.round(t)))
+  } catch (e) { console.error("collect gpu:", e) }
+  finally { _gpuBusy = false }
 }
 
 // ── Push battery updates from UPower signals (no poll) ──
@@ -264,12 +345,28 @@ function findUpowerBattery(): any {
   return null
 }
 
+function readBatteryFullWh(base: string): string {
+  const ef = readSys(`${base}/energy_full`)
+  if (ef) {
+    const n = parseInt(ef)
+    if (Number.isFinite(n) && n > 0) return (n / 1000000).toFixed(2)
+  }
+  // Some batteries only expose charge in µAh; convert with the measured or
+  // design voltage: Wh = µAh × µV / 1e12.
+  const cf = readSys(`${base}/charge_full`)
+  const volt = readSys(`${base}/voltage_now`) || readSys(`${base}/voltage_min_design`)
+  const c = parseInt(cf)
+  const v = parseInt(volt)
+  if (Number.isFinite(c) && c > 0 && Number.isFinite(v) && v > 0) return ((c * v) / 1e12).toFixed(2)
+  return ""
+}
+
 function hookBatterySignals(b: any) {
   try {
     if (_hookedBatteries.has(b)) return
     _hookedBatteries.add(b)
     const resync = () => syncBattery(b)
-    for (const sig of ["notify::percentage", "notify::state", "notify::energy", "notify::time-to-empty", "notify::time-to-full"]) {
+    for (const sig of ["notify::percentage", "notify::state", "notify::energy", "notify::energy-full", "notify::time-to-empty", "notify::time-to-full"]) {
       try { b.connect(sig, resync) } catch { /* ignore */ }
     }
   } catch { /* ignore */ }
@@ -288,6 +385,8 @@ function syncBattery(dev?: any) {
           if (cap) setIfChanged(batteryPerc, setBatteryPerc, parseInt(cap) || 0)
           const st = readSys(`${_batteryPath}/status`)
           if (st) setIfChanged(batteryStatus, setBatteryStatus, st)
+          const fullWh = readBatteryFullWh(_batteryPath)
+          if (fullWh) setIfChanged(batteryEnergyFull, setBatteryEnergyFull, fullWh)
           if (cap || st) return
         }
       } catch { /* sysfs fallback best-effort */ }
@@ -298,6 +397,10 @@ function syncBattery(dev?: any) {
     setIfChanged(batteryStatus, setBatteryStatus, upStateLabel(Number(b.state)))
     const energy = Number(b.energy)
     if (Number.isFinite(energy)) setIfChanged(batteryEnergy, setBatteryEnergy, energy.toFixed(2))
+    const energyFull = Number(b.energy_full)
+    if (Number.isFinite(energyFull) && energyFull > 0) {
+      setIfChanged(batteryEnergyFull, setBatteryEnergyFull, energyFull.toFixed(2))
+    }
     const state = Number(b.state)
     const tte = Number(b.time_to_empty) || 0
     const ttf = Number(b.time_to_full) || 0
@@ -346,13 +449,35 @@ function collectNet() {
   }
 }
 
-function collectNetInfo() {
-  const iface = netIface()
-  const ssid = run(`iwgetid -r ${iface} 2>/dev/null`).trim()
-  if (ssid) setNetSSID(ssid)
-  const bitrate = run(`iwconfig ${iface} 2>/dev/null | grep -o 'Bit Rate[=:][0-9.]*' | grep -o '[0-9.]*'`).trim()
-  if (bitrate) setNetBitrate(bitrate + " Mb/s")
-  setNetLocalIp(run(`ip -4 addr show ${iface} 2>/dev/null | grep inet | awk '{print $2}' | cut -d/ -f1`).trim() || "N/A")
+let _netInfoBusy = false
+
+async function collectNetInfoAsync(): Promise<void> {
+  if (_netInfoBusy) return
+  _netInfoBusy = true
+  try {
+    const iface = netIface()
+    // `iw link` alone prints usage on some iw builds; `iw dev <if> link`
+    // always works and reports the negotiated tx bitrate in a stable format.
+    const [ssid, link, addr] = await Promise.all([
+      execAsyncFast(["iwgetid", "-r", iface]),
+      execAsyncFast(["iw", "dev", iface, "link"]),
+      execAsyncFast(["ip", "-4", "addr", "show", iface]),
+    ])
+
+    const name = ssid.trim()
+    if (name) setNetSSID(name)
+
+    const rate = link.match(/tx bitrate:\s*([\d.]+)\s*(M|K|G)Bit\/s/i)
+    if (rate) {
+      const mul = rate[2].toUpperCase() === "G" ? 1000 : rate[2].toUpperCase() === "K" ? 0.001 : 1
+      const mbit = parseFloat(rate[1]) * mul
+      setNetBitrate(`${mbit.toFixed(mul === 1 ? 1 : 2)} Mb/s`)
+    }
+
+    const ip = addr.match(/inet\s+([\d.]+)/)
+    setNetLocalIp(ip ? ip[1] : "N/A")
+  } catch (e) { console.error("collect net info:", e) }
+  finally { _netInfoBusy = false }
 }
 
 function collectNetConns() {
@@ -372,27 +497,39 @@ function collectNetConns() {
   setNetOutbound(String(outbound))
 }
 
-let _pingCache = { time: 0, latency: "N/A", loss: "0", jitter: "N/A" }
+let _pingTime = 0
+let _pingBusy = false
 const PING_INTERVAL = 15000
 
-export function collectNetPing() {
-  try { if (!networkMonitor.get_network_available()) return } catch { /* assume online */ }
+export async function collectNetPingAsync(): Promise<void> {
+  if (_pingBusy) return
+  try { if (!getNetworkAvailable()) return } catch { /* assume online */ }
   const now = Date.now()
-  if (now - _pingCache.time < PING_INTERVAL) return
-  _pingCache.time = now
-  const out = run('ping -c 3 -q 8.8.8.8 2>/dev/null')
-  if (!out) { setNetLatency("N/A"); setNetLoss("100"); setNetJitter("0.00"); return }
-  const lossM = out.match(/([\d.]+)% packet loss/)
-  const rttM = out.match(/[\d.]+\/([\d.]+)\/[\d.]+\/([\d.]+)/)
-  if (lossM) { setNetLoss(lossM[1]); _pingCache.loss = lossM[1] }
-  if (rttM) {
-    setNetLatency(`${rttM[1]}ms ± ${rttM[2]}ms`)
-    setNetJitter(rttM[2])
-    _pingCache.latency = `${rttM[1]}ms ± ${rttM[2]}ms`
-    _pingCache.jitter = rttM[2]
-  } else {
-    setNetLatency("N/A"); setNetJitter("0.00")
-  }
+  if (now - _pingTime < PING_INTERVAL) return
+  _pingTime = now
+  _pingBusy = true
+  try {
+    // `-w` caps the whole run at 2s. `ping` exits non-zero on partial packet
+    // loss but still prints valid rtt/loss figures, so the stdout is read
+    // regardless of the exit status.
+    const { out } = await execAsyncRaw(["ping", "-c", "2", "-w", "2", "-q", "8.8.8.8"])
+    if (!out) { setNetLatency("N/A"); setNetLoss("100"); setNetJitter("0.00"); return }
+    const lossM = out.match(/([\d.]+)% packet loss/)
+    const rttM = out.match(/[\d.]+\/([\d.]+)\/[\d.]+\/([\d.]+)/)
+    if (lossM) setNetLoss(lossM[1])
+    if (rttM) {
+      setNetLatency(`${rttM[1]}ms ± ${rttM[2]}ms`)
+      setNetJitter(rttM[2])
+    } else {
+      setNetLatency("N/A"); setNetJitter("0.00")
+    }
+  } catch (e) { console.error("ping:", e) }
+  finally { _pingBusy = false }
+}
+
+/** Kept for src/Network.tsx, which fires this when connectivity returns. */
+export function collectNetPing(): void {
+  void collectNetPingAsync()
 }
 
 function collectDiskSpeeds() {
@@ -411,12 +548,18 @@ function collectDiskSpeeds() {
   }
 }
 
-async function collectDiskUsage() {
-  const df = (await execAsyncFast(["bash", "-c", "df -h / 2>/dev/null | tail -1"])).trim()
-  if (df) {
-    const p = df.split(/\s+/)
-    if (p.length >= 6) { setDiskTotal(p[1]); setDiskUsed(p[2]); setDiskFree(p[3]); setIfChanged(diskPerc, setDiskPerc, parseInt(p[4].replace("%", "")) || 0) }
-  }
+async function collectDiskUsage(): Promise<void> {
+  // `-P -B1` gives POSIX one-line-per-filesystem output in raw bytes, so the
+  // numbers can be formatted with the same helper the memory rows use.
+  const out = await execAsyncFast(["df", "-P", "-B1", "/"])
+  if (!out) return
+  const line = out.split("\n").find(l => l.trim().endsWith(" /")) || ""
+  const p = line.trim().split(/\s+/)
+  if (p.length < 6) return
+  setDiskTotal(formatBytes(parseInt(p[1]) || 0))
+  setDiskUsed(formatBytes(parseInt(p[2]) || 0))
+  setDiskFree(formatBytes(parseInt(p[3]) || 0))
+  setIfChanged(diskPerc, setDiskPerc, parseInt(p[4].replace("%", "")) || 0)
 }
 
 function collectSys() {
@@ -448,33 +591,40 @@ export function formatSpeed(kib: number): string {
   return Math.round(kib) + "KiB/s"
 }
 
-async function collectTopProcs() {
-  const out = await execAsyncFast(["bash", "-c", "ps -eo pid,nlwp,%cpu,comm --sort=-%cpu --no-headers | head -10"])
+const TOP_N = 10
+
+function num(v: string | undefined, divisor = 1): string {
+  const n = parseFloat(v ?? "")
+  if (!Number.isFinite(n)) return "0"
+  return (n / divisor).toFixed(1)
+}
+
+async function collectTopProcs(): Promise<void> {
+  const out = await execAsyncFast(["ps", "-eo", "pid,nlwp,%cpu,comm", "--sort=-%cpu", "--no-headers"])
   if (!out) return
-  const lines = out.split("\n").filter(l => l.trim())
-  setTopProcs(lines.map(line => {
+  const rows = out.split("\n").filter(l => l.trim()).slice(0, TOP_N)
+  setTopProcs(rows.map((line) => {
     const parts = line.trim().split(/\s+/)
-    const pid = parts[0]
-    const threads = parts[1]
-    const cpu = (parseFloat(parts[2]) / NCPUS).toFixed(1)
-    const name = parts.slice(3).join(" ") || "?"
-    return { pid: pid || "", name, threads: threads || "0", cpu: cpu || "0" }
+    return {
+      pid: parts[0] || "",
+      name: parts.slice(3).join(" ") || "?",
+      threads: parts[1] || "0",
+      cpu: num(parts[2], NCPUS),
+    }
   }))
 }
 
-async function collectTopMemProcs() {
-  const out = await execAsyncFast(["bash", "-c", "ps -eo pid,%mem,vsize,rss,comm --sort=-%mem --no-headers | head -10"])
+async function collectTopMemProcs(): Promise<void> {
+  const out = await execAsyncFast(["ps", "-eo", "pid,%mem,vsize,rss,comm", "--sort=-%mem", "--no-headers"])
   if (!out) return
-  const lines = out.split("\n").filter(l => l.trim())
-  setTopMemProcs(lines.map(line => {
+  const rows = out.split("\n").filter(l => l.trim()).slice(0, TOP_N)
+  setTopMemProcs(rows.map((line) => {
     const parts = line.trim().split(/\s+/)
-    const pid = parts[0]
     const vsizeKB = parseInt(parts[2]) || 0
     const rssKB = parseInt(parts[3]) || 0
-    const name = parts.slice(4).join(" ") || "?"
     return {
-      pid: pid || "",
-      name,
+      pid: parts[0] || "",
+      name: parts.slice(4).join(" ") || "?",
       vsize: vsizeKB > 0 ? formatBytes(vsizeKB * 1024) : "0",
       size: rssKB > 0 ? formatBytes(rssKB * 1024) : "0",
     }
@@ -521,7 +671,7 @@ function fastUpdateB() {
 
 let _fetching = false
 
-async function slowUpdate() {
+async function slowUpdate(): Promise<void> {
   if (_fetching) return
   _fetching = true
   try {
@@ -532,12 +682,12 @@ async function slowUpdate() {
       const l = readSys("/proc/loadavg")
       if (l) setCpuLoads(l.split(" ").slice(0, 3).join(" "))
     }
-    if (visible.has("GpuBox")) collectGpu()
+    if (visible.has("GpuBox")) await collectGpuAsync()
     if (visible.has("NetworkBox")) {
       collectNetConns()
-      collectNetInfo()
+      await collectNetInfoAsync()
     }
-    await collectTopProcs()
+    if (visible.has("CpuBox")) await collectTopProcs()
     if (visible.has("MemoryBox")) await collectTopMemProcs()
   } catch (e) { console.error("slow update:", e) }
   finally { _fetching = false }
@@ -551,49 +701,71 @@ async function verySlowUpdate() {
 }
 
 // ── One-time hardware discovery ──
-{
+// Everything here runs off the critical path: the module finishes evaluating
+// with "Loading..." placeholders in place and the UI paints immediately.
+async function initHardwareAsync(): Promise<void> {
   const _bp = findBattery()
   if (_bp) {
     _batteryPath = _bp
     setBatteryTech(readSys(`${_bp}/technology`) || "N/A")
-    const full = readSys(`${_bp}/energy_full`) || readSys(`${_bp}/charge_full`) || "1"
-    setBatteryEnergyFull((parseInt(full) / 1000000).toFixed(2))
+    const fullWh = readBatteryFullWh(_bp)
+    if (fullWh) setBatteryEnergyFull(fullWh)
   }
-  setKernel(run("uname -sr").trim())
-  const cm = run("grep 'model name' /proc/cpuinfo | head -1 | sed 's/.*: //'").trim()
-  if (cm) setCpuModel(cm)
+
+  const release = readSys("/proc/sys/kernel/osrelease")
+  setKernel(release ? `Linux ${release}` : "N/A")
+
+  const model = readSys("/proc/cpuinfo").match(/^model name\s*:\s*(.+)$/m)
+  if (model) setCpuModel(model[1].trim())
+
   const mf = readSys("/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq")
   if (mf) setCpuMaxFreq((parseInt(mf) / 1000000).toFixed(1) + "GHz")
-  const c = findDrmCard()
-  if (c) {
-    _card = c
-    const v = readSys(`${c}/device/vendor`)
-    if (v) _vendor = v
-    const gn = run("lspci 2>/dev/null | grep -i vga | head -1 | sed 's/.*://' | sed 's/(.*//'").trim()
-    if (gn) setGpuModel(gn)
-    const drv = run("ls -d /sys/bus/pci/drivers/*/ 2>/dev/null | grep -E 'i915|amdgpu|nouveau|nvidia' | head -1 | xargs basename 2>/dev/null").trim()
+
+  const card = findDrmCard()
+  if (card) {
+    _card = card.path
+    _vendor = readSys(`${card.path}/device/vendor`) || ""
+    const drv = readDriverName(`${card.path}/device`)
     if (drv) setGpuDriver(drv)
-    const mf2 = readSys(`${c}/gt_max_freq_mhz`) || readSys(`${c}/gt_RP0_freq_mhz`) || ""
+    const mf2 = readSys(`${card.path}/gt_max_freq_mhz`) || readSys(`${card.path}/gt_RP0_freq_mhz`) || ""
     if (mf2) setGpuFreqMax(mf2.trim())
+
+    // A single `lspci -v` covers both the device name and, on Intel, the
+    // prefetchable memory window.
+    let info = ""
+    if (card.pci) info = await execAsyncFast(["lspci", "-v", "-s", card.pci])
+    const name = info.match(/VGA compatible controller:\s*(.+)/i)
+    if (name) setGpuModel(name[1].replace(/\s*\(rev.*$/i, "").trim())
+
     if (_vendor === "0x8086") {
       setGpuType("Integrated")
-      const mem = run("lspci -v -s $(lspci 2>/dev/null | grep -i vga | head -1 | cut -d' ' -f1) 2>/dev/null | grep 'prefetchable' | head -1 | sed 's/.*\\[size=//;s/\\].*//'").trim()
-      if (mem) { setGpuMemUsed("N/A"); setGpuMemTotal(mem) }
-      else { setGpuMemUsed("N/A"); setGpuMemTotal("N/A") }
+      // Anchored on the bit width so the "non-prefetchable" BAR, which lspci
+      // prints first, is not mistaken for the shared-memory window.
+      const mem = info.match(/\(\d+-bit, prefetchable\)\s*\[size=([\d.]+[KMGT]?)\]/i)
+      setGpuMemUsed("N/A")
+      setGpuMemTotal(mem ? mem[1] : "N/A")
     } else if (_vendor === "0x10de") {
       setGpuType("Discrete")
     } else if (_vendor === "0x1002") {
       setGpuType("Discrete")
-      const vt = readSys(`${c}/device/mem_info_vram_total`)
+      const vt = readSys(`${card.path}/device/mem_info_vram_total`)
       if (vt) setGpuMemTotal(String(Math.round(parseInt(vt) / 1048576)))
     }
   }
+
   for (let i = 0; i < 10; i++) {
     const typ = readSys(`/sys/class/thermal/thermal_zone${i}/type`)
     if (!typ) break
     _thermalTypes.push(typ.trim().toLowerCase())
   }
-  setStorageDevices(run(`lsblk -ro NAME,SIZE,TYPE,MOUNTPOINTS 2>/dev/null | awk 'function d(n){r="";for(i=1;i<=n;i++)r=r"-";return r} $3=="disk"||$3=="rom"{n="->"$1;n=n d(17-length(n));print n"("$2")"} $3=="part"{mnt=$4;if(length(mnt)>20)mnt=substr(mnt,1,17)"...";n="  \\u2514--"$1;n=n d(17-length(n));l=n"("$2")";if(mnt){p=d(27-length(l));print l p"--" mnt}else print l}'`).trim())
+
+  const blocks = await execAsyncFast(["lsblk", "-ro", "NAME,SIZE,TYPE,MOUNTPOINTS"])
+  setStorageDevices(formatLsblk(blocks) || "N/A")
+
+  // Temperatures and GPU stats depend on the discovery above
+  collectTemps()
+  await collectGpuAsync()
+  setHwReady(true)
 }
 
 interval(1000, fastUpdateA)
@@ -603,5 +775,7 @@ interval(30000, () => { verySlowUpdate().catch((e) => console.error("very slow u
 interval(PING_INTERVAL, collectNetPing)
 fastUpdateA()
 fastUpdateB()
+initHardwareAsync().catch((e) => console.error("hardware init:", e))
 slowUpdate().catch((e) => console.error("slow init:", e))
 verySlowUpdate().catch((e) => console.error("very slow init:", e))
+collectNetPing()
