@@ -47,14 +47,32 @@ const categoryMap: Record<string, string> = {
 
 const categories = Object.keys(categoryMap)
 
+let newsBlockedUntil = 0
+const NEWS_BLOCK_MS = 60 * 60 * 1000 // Pause for 1 hour on 429
+let _newsWarned = false
+
 async function fetchCategory(cat: string) {
   if (!API_KEY) return
+  if (Date.now() < newsBlockedUntil) return
+  if (newsBlockedUntil && Date.now() >= newsBlockedUntil) {
+    newsBlockedUntil = 0
+    _newsWarned = false
+  }
   try {
     const topic = categoryMap[cat]
     const res = await fetch(
       `https://api.freenewsapi.io/v1/news?language=en&topic=${topic}&page_size=2`,
       { headers: { "x-api-key": API_KEY } }
     )
+    if (res.status === 429) {
+      newsBlockedUntil = Date.now() + NEWS_BLOCK_MS
+      if (!_newsWarned) {
+        console.warn("news: FreeNewsApi quota exceeded (429). Pausing for 1 hour.")
+        _newsWarned = true
+      }
+      return
+    }
+    if (!res.ok) return
     const data = await res.json()
     if (data?.error) { console.error(`news ${cat}:`, data.error); return }
     const articles = data?.data
