@@ -98,6 +98,19 @@ box.cpu-red {
 
 .cover-img {
   padding: 2px;
+  border-width: 1px;
+  border-style: solid;
+  border-color: transparent;
+}
+
+box.cover-placeholder {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+box.cover-placeholder label {
+  font-size: 20pt;
+  color: #FFE020;
 }
 
 label.weather-desc {
