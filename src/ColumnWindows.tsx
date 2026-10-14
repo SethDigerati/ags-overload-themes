@@ -9,7 +9,7 @@ import { CpuBox } from "./Cpu"
 import { GpuBox } from "./Gpu"
 import { MemoryBox } from "./Memory"
 import { NetworkBox } from "./Network"
-import { WeatherBox } from "./Weather"
+import { WeatherBox, weatherReady } from "./Weather"
 import { LastFmBox } from "./LastFm"
 import { MarketBox, marketReady } from "./Market"
 import { QuoteBox } from "./Quote"
@@ -32,6 +32,7 @@ const readiness: Record<string, Accessor<boolean> | undefined> = {
   MemoryBox: hwReady,
   GpuBox: hwReady,
   NetworkBox: hwReady,
+  WeatherBox: weatherReady,
   MarketBox: marketReady,
 }
 
