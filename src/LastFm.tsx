@@ -263,7 +263,7 @@ export function LastFmBox() {
           return (
             <box orientation={Gtk.Orientation.VERTICAL}>
               <box>
-                <box
+                <overlay
                   class={item.image ? "cover-img" : "cover-img cover-placeholder"}
                   widthRequest={size}
                   heightRequest={size}
@@ -278,18 +278,24 @@ export function LastFmBox() {
                       valign={Gtk.Align.CENTER}
                     />
                   ) : (
-                    <label
-                      class="gray3"
-                      label="♪"
-                      widthRequest={size}
-                      heightRequest={size}
-                      halign={Gtk.Align.CENTER}
-                      valign={Gtk.Align.CENTER}
-                      xalign={0.5}
-                      yalign={0.5}
-                    />
+                    <>
+                      <box
+                        class="cover-placeholder-bg"
+                        widthRequest={size}
+                        heightRequest={size}
+                      />
+                      <label
+                        $type="overlay"
+                        class="gray3"
+                        label="♪"
+                        halign={Gtk.Align.CENTER}
+                        valign={Gtk.Align.CENTER}
+                        xalign={0.5}
+                        yalign={0.5}
+                      />
+                    </>
                   )}
-                </box>
+                </overlay>
               <box class="track-details" orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
                 <box>
                   <label class="accent" label="Track: " xalign={0} />

@@ -101,14 +101,20 @@ box.cpu-red {
   border-width: 1px;
   border-style: solid;
   border-color: transparent;
+  border-radius: 0;
 }
 
-box.cover-placeholder {
+overlay.cover-placeholder {
   background-color: rgba(255, 255, 255, 0.05);
   border-color: rgba(255, 255, 255, 0.15);
 }
 
-box.cover-placeholder label {
+box.cover-placeholder-bg {
+  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04) 55%, rgba(255, 224, 32, 0.12));
+  filter: blur(16px);
+}
+
+.cover-placeholder label {
   font-size: 20pt;
   color: #FFE020;
 }
