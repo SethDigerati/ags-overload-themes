@@ -17,6 +17,34 @@ const DATA_DIR = "/tmp/ags/lastfm"
 const NO_ART_HASH = "2a96cbd8b46e442fc41c2b86b821562f"
 const IMG_SIZES = ["extralarge", "large", "medium", "small"] as const
 
+// Pre-blurred placeholder tile: GTK's CSS engine has no backdrop blur and
+// ignores `filter:`, so the frosted-glass background is a small SVG whose
+// feGaussianBlur librsvg renders offscreen. Written once when missing; bump
+// the filename version to force a refresh after artwork tweaks.
+const BLUR_PLACEHOLDER = `${DATA_DIR}/placeholder_blur_v2.svg`
+
+function ensureBlurPlaceholder(): void {
+  try {
+    if (GLib.file_test(BLUR_PLACEHOLDER, GLib.FileTest.IS_REGULAR)) return
+    writeFile(BLUR_PLACEHOLDER, `<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <filter id="intense-blur" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="25" />
+    </filter>
+  </defs>
+  <rect width="200" height="200" fill="#000000" />
+  <g filter="url(#intense-blur)">
+    <circle cx="50" cy="50" r="65" fill="#FFE020" opacity="0.65" />
+    <circle cx="150" cy="150" r="75" fill="#D4AF37" opacity="0.50" />
+    <circle cx="140" cy="40" r="45" fill="#FFFFFF" opacity="0.35" />
+    <circle cx="45" cy="160" r="60" fill="#141414" opacity="0.90" />
+  </g>
+</svg>`)
+  } catch (e) {
+    console.error("blur placeholder:", e)
+  }
+}
+
 type Track = {
   artist: string; track: string; album: string;
   duration: string; playcount: string; artistPlaycount: string; image: string;
@@ -249,6 +277,7 @@ Gio.NetworkMonitor.get_default()?.connect("network-changed", (_m: any, online: b
   }
 })
 cleanupLegacy()
+ensureBlurPlaceholder()
 fetchLastfm().catch((e) => console.error("lastfm init:", e))
 
 export function LastFmBox() {
@@ -260,41 +289,40 @@ export function LastFmBox() {
       <For each={tracks}>
         {(item, idx) => {
           const size = idx.peek() === 0 ? 100 : 80
+          // Frame chrome is 2px padding + 1px border per side. The overlay's
+          // request is a minimum, so both branches settle at outerSize and
+          // rows never shift when a track gains or loses artwork.
+          const outerSize = size + 6
           return (
             <box orientation={Gtk.Orientation.VERTICAL}>
               <box>
                 <overlay
-                  class={item.image ? "cover-img" : "cover-img cover-placeholder"}
-                  widthRequest={size}
-                  heightRequest={size}
+                  class={item.image ? "cover-frame has-art" : "cover-frame is-placeholder"}
+                  widthRequest={outerSize}
+                  heightRequest={outerSize}
                   halign={Gtk.Align.START}
                   valign={Gtk.Align.CENTER}
                 >
-                  {item.image ? (
-                    <image
-                      file={item.image}
-                      pixelSize={size}
-                      halign={Gtk.Align.CENTER}
-                      valign={Gtk.Align.CENTER}
-                    />
-                  ) : (
-                    <>
-                      <box
-                        class="cover-placeholder-bg"
-                        widthRequest={size}
-                        heightRequest={size}
-                      />
-                      <label
-                        $type="overlay"
-                        class="gray3"
-                        label="♪"
-                        halign={Gtk.Align.CENTER}
-                        valign={Gtk.Align.CENTER}
-                        xalign={0.5}
-                        yalign={0.5}
-                      />
-                    </>
-                  )}
+                  {/* Same <image> widget + pixelSize in both branches: cached
+                      art when available, pre-blurred SVG tile otherwise. */}
+                  <image
+                    class="cover-art"
+                    file={item.image || BLUR_PLACEHOLDER}
+                    pixelSize={size}
+                    halign={Gtk.Align.CENTER}
+                    valign={Gtk.Align.CENTER}
+                  />
+                  {/* Always rendered (empty + transparent with art) so no JSX
+                      fragment is needed to split main vs overlay children. */}
+                  <label
+                    $type="overlay"
+                    class={item.image ? "hidden-icon" : "placeholder-icon"}
+                    label={item.image ? "" : "♪"}
+                    halign={Gtk.Align.CENTER}
+                    valign={Gtk.Align.CENTER}
+                    xalign={0.5}
+                    yalign={0.5}
+                  />
                 </overlay>
               <box class="track-details" orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
                 <box>
