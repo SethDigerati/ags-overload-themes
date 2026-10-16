@@ -96,27 +96,38 @@ box.cpu-red {
   background: #FF0000;
 }
 
-.cover-img {
+/* Unified cover frame: art and placeholder share one box model, so rows
+   never shift a pixel when a track gains or loses artwork. */
+.cover-frame {
   padding: 2px;
   border-width: 1px;
   border-style: solid;
+  border-color: rgba(255, 255, 255, 0.12);
+  border-radius: 0;
+  background-color: #000000;
+}
+
+.cover-frame.has-art {
   border-color: transparent;
+}
+
+.cover-frame.is-placeholder {
+  border-color: rgba(255, 224, 32, 0.35);
+  background-color: #050505;
+}
+
+.cover-art {
   border-radius: 0;
 }
 
-overlay.cover-placeholder {
-  background-color: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.15);
-}
-
-box.cover-placeholder-bg {
-  background-image: linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.04) 55%, rgba(255, 224, 32, 0.12));
-  filter: blur(16px);
-}
-
-.cover-placeholder label {
-  font-size: 20pt;
+.placeholder-icon {
+  font-size: 24pt;
   color: #FFE020;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+}
+
+.hidden-icon {
+  opacity: 0;
 }
 
 label.weather-desc {
