@@ -96,24 +96,27 @@ box.cpu-red {
   background: #FF0000;
 }
 
-/* Unified cover frame: art and placeholder share one box model, so rows
-   never shift a pixel when a track gains or loses artwork. */
+/* Unified cover frame: crisp 1px white outline matching the theme line weight.
+   No padding, so the artwork sits flush against the border. Art and
+   placeholder share one box model, so rows never shift a pixel when a track
+   gains or loses artwork. */
 .cover-frame {
-  padding: 2px;
+  padding: 0;
   border-width: 1px;
   border-style: solid;
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: #FFFFFF;
   border-radius: 0;
-  background-color: #000000;
+  background-color: transparent;
 }
 
 .cover-frame.has-art {
-  border-color: transparent;
+  border-color: #FFFFFF;
+  background-color: transparent;
 }
 
 .cover-frame.is-placeholder {
-  border-color: rgba(255, 224, 32, 0.35);
-  background-color: #050505;
+  border-color: #FFFFFF;
+  background-color: rgba(255, 255, 255, 0.04);
 }
 
 .cover-art {
@@ -123,7 +126,7 @@ box.cpu-red {
 .placeholder-icon {
   font-size: 24pt;
   color: #FFE020;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.95);
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.9);
 }
 
 .hidden-icon {
