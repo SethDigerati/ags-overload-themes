@@ -127,13 +127,25 @@ export function QuoteBox() {
       <label wrap xalign={0} class="section-header" label="QUOTE" />
       <box class="hr-line" />
       <box spacing={8}>
-        <image
-          class="cover-art"
-          file={createComputed(() => authorImage())}
-          pixelSize={createComputed(() => authorImage() ? 80 : 0)}
+        {/* 84 = 80px avatar + 2px padding on all four sides. Hidden outright
+            when there is no avatar yet, so the quote text stays flush left. */}
+        <box
+          class="cover-frame"
+          widthRequest={84}
+          heightRequest={84}
+          overflow={Gtk.Overflow.HIDDEN}
           halign={Gtk.Align.START}
           valign={Gtk.Align.START}
-        />
+          visible={createComputed(() => !!authorImage())}
+        >
+          <image
+            class="cover-art"
+            file={createComputed(() => authorImage())}
+            pixelSize={80}
+            halign={Gtk.Align.CENTER}
+            valign={Gtk.Align.CENTER}
+          />
+        </box>
         <label wrap maxWidthChars={40} class="gray1" label={createComputed(() => quote().text)} xalign={0} hexpand valign={Gtk.Align.CENTER} />
       </box>
       <label wrap ellipsize={3} maxWidthChars={40} class="quote-author" label={createComputed(() => `~${quote().author}~`)} xalign={0} />
