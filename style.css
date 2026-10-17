@@ -96,30 +96,27 @@ box.cpu-red {
   background: #FF0000;
 }
 
-/* Unified cover frame: crisp 1px white outline matching the theme line weight.
-   No padding, so the artwork sits flush against the border. Art and
-   placeholder share one box model, so rows never shift a pixel when a track
-   gains or loses artwork. */
+/* Borderless, flush image containers: no border, no padding, no background.
+   Art and placeholder share one box model, so rows never shift a pixel when a
+   track gains or loses artwork. */
 .cover-frame {
   padding: 0;
-  border-width: 1px;
-  border-style: solid;
-  border-color: #FFFFFF;
-  border-radius: 0;
+  border-width: 0;
+  border-style: none;
   background-color: transparent;
 }
 
-.cover-frame.has-art {
-  border-color: #FFFFFF;
-  background-color: transparent;
-}
-
+.cover-frame.has-art,
 .cover-frame.is-placeholder {
-  border-color: #FFFFFF;
-  background-color: rgba(255, 255, 255, 0.04);
+  border-width: 0;
+  border-style: none;
+  background-color: transparent;
 }
 
 .cover-art {
+  border-width: 0;
+  border-style: none;
+  padding: 0;
   border-radius: 0;
 }
 
