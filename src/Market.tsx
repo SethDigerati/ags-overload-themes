@@ -30,9 +30,25 @@ const SYMBOL_NAME: Record<string, string> = Object.fromEntries(MARKETS.map(([s, 
 // Coin ids, in the same order, for the historical 1h/1w/1m/1y columns.
 const CG_IDS = ["bitcoin", "ethereum", "solana", "ripple", "dogecoin", "cardano"]
 
-const ASSET_W = 50
-const PRICE_W = 66
+// Column budget for the 399px panel. Widths are measured from Iosevka 10.5pt
+// at 96dpi (7px advance per character) rather than estimated, because a
+// `widthRequest` is only a MINIMUM -- a label wider than its budget silently
+// widens its box and shoves every column to the right of it out of line.
+//
+//   ASSET_W  32px  longest name "DOGE" = 4ch = 28px
+//   PRICE_W  72px  DASH_W 9px + 9ch digits = 9 + 63
+//   PCT_W    56px  ARROW_W 14px + 6ch "-12.3%" = 14 + 42
+//   32 + 72 + (5 * 56) + (6 * 2) = 396px, inside the 399px container
+const ASSET_W = 32
+const PRICE_W = 72
 const PCT_W = 56
+const DASH_W = 9
+// U+25B2/U+25BC are absent from Iosevka and fall back to a 14px-wide face,
+// while U+2500 comes from Iosevka at 7px. Pinning the gutter to 14px keeps
+// the arrow slot identical in all three states, so the percentage text that
+// follows always starts at the same x.
+const ARROW_W = 14
+const ROW_SPACING = 2
 
 const countryCurrency: Record<string, string> = {
   US: "USD", IN: "INR", GB: "GBP", JP: "JPY",
@@ -102,12 +118,14 @@ function thousands(int: string): string {
   return int.replace(/\B(?=(\d{3})+(?!\d))/g, ",")
 }
 
+// Digits only -- the "$" lives in its own fixed column so every row's dollar
+// sign lands on the exact same pixel column.
 function formatPrice(raw: unknown): string {
   const n = typeof raw === "number" ? raw : parseFloat(String(raw))
   if (!Number.isFinite(n)) return "N/A"
-  if (n >= 1000) return `$${thousands(n.toFixed(2))}`
-  if (n >= 1) return `$${n.toFixed(2)}`
-  return `$${n.toFixed(4)}`
+  if (n >= 1000) return thousands(n.toFixed(2))
+  if (n >= 1) return n.toFixed(2)
+  return n.toFixed(4)
 }
 
 function fmtPct(raw: unknown, prev: string): string {
@@ -255,8 +273,9 @@ function scheduleRemote(delay: number): void {
 function PctHead({ label }: { label: string }) {
   return (
     <box widthRequest={PCT_W} spacing={0}>
-      <box widthRequest={12} />
-      <label wrap class="accent" label={label} xalign={0} />
+      {/* Blank arrow gutter so the header text lines up with the cell values. */}
+      <box widthRequest={ARROW_W} />
+      <label class="accent" label={label} xalign={0} />
     </box>
   )
 }
@@ -265,24 +284,25 @@ function PctCell({ val }: { val: Accessor<string> }) {
   const text = createComputed(() => {
     const raw = val()
     const n = parseFloat(raw)
-    if (n > 0) return { arrow: "▲", abs: false, text: `${raw}%` }
-    if (n < 0) return { arrow: "▼", abs: true, text: `${Math.abs(n).toFixed(1)}%` }
-    return { arrow: "─", abs: false, text: "0.0%" }
+    if (n > 0) return { arrow: "▲", cls: "positive", text: `${raw}%` }
+    if (n < 0) return { arrow: "▼", cls: "negative", text: `${Math.abs(n).toFixed(1)}%` }
+    return { arrow: "─", cls: "gray2", text: "0.0%" }
   })
 
   return (
     <box widthRequest={PCT_W} spacing={0}>
       <label
-        wrap
-        class={createComputed(() => text().abs ? "negative" : text().arrow === "▲" ? "positive" : "gray2")}
+        class={createComputed(() => text().cls)}
         label={createComputed(() => text().arrow)}
         xalign={0}
-        widthRequest={12}
+        // No max-width-chars here: it would cap the label at one advance (7px)
+        // and slice the 14px triangles in half. widthRequest alone is enough --
+        // it dominates the narrower U+2500 and exactly fits the wider ones.
+        widthRequest={ARROW_W}
       />
       <label
-        wrap
         ellipsize={3}
-        maxWidthChars={5}
+        maxWidthChars={6}
         class="gray2"
         label={createComputed(() => text().text)}
         xalign={0}
@@ -293,11 +313,16 @@ function PctCell({ val }: { val: Accessor<string> }) {
 
 function AssetRow({ row }: { row: Accessor<Asset> }) {
   return (
-    <box widthRequest={399} spacing={5}>
-      <label ellipsize={3} maxWidthChars={6} wrap xalign={0} class="gray2"
+    <box widthRequest={399} spacing={ROW_SPACING}>
+      <label ellipsize={3} maxWidthChars={4} xalign={0} class="gray2"
         label={createComputed(() => row().name)} widthRequest={ASSET_W} />
-      <label ellipsize={3} maxWidthChars={9} wrap xalign={1} class="gray2"
-        label={createComputed(() => row().cur)} widthRequest={PRICE_W} />
+      {/* Dedicated fixed-width "$" column, then left-aligned digits directly
+          against it. */}
+      <box widthRequest={PRICE_W} spacing={0}>
+        <label class="price-dash" label="$" widthRequest={DASH_W} xalign={0} />
+        <label ellipsize={3} maxWidthChars={9} xalign={0} class="gray2"
+          label={createComputed(() => row().cur)} />
+      </box>
       <PctCell val={createComputed(() => row().pct1h)} />
       <PctCell val={createComputed(() => row().pct1d)} />
       <PctCell val={createComputed(() => row().pct1w)} />
@@ -319,9 +344,11 @@ export function MarketBox() {
         />
       </box>
       <box class="hr-line" />
-      <box spacing={5}>
-        <label wrap class="accent" label="ASSET" xalign={0} widthRequest={ASSET_W} />
-        <label wrap class="accent" label="PRICE" xalign={1} widthRequest={PRICE_W} />
+      <box spacing={ROW_SPACING}>
+        <label class="accent" label="ASSET" xalign={0} widthRequest={ASSET_W} />
+        <box widthRequest={PRICE_W} spacing={0}>
+          <label class="accent" label="PRICE" xalign={0} />
+        </box>
         <PctHead label="1h" />
         <PctHead label="1d" />
         <PctHead label="1w" />

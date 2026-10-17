@@ -30,6 +30,12 @@ label.accent {
   color: #FFE020;
 }
 
+/* Currency marker in the MARKET price column. White so the "$" reads as a
+   neutral prefix rather than competing with the gold column headers. */
+label.price-dash {
+  color: #FFFFFF;
+}
+
 label.quote-author {
   color: #FFE020;
   font-style: italic;
