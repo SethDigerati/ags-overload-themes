@@ -21,7 +21,7 @@ const IMG_SIZES = ["extralarge", "large", "medium", "small"] as const
 // ignores `filter:`, so the frosted-glass background is a small SVG whose
 // feGaussianBlur librsvg renders offscreen. Written once when missing; bump
 // the filename version to force a refresh after artwork tweaks.
-const BLUR_PLACEHOLDER = `${DATA_DIR}/placeholder_blur_v3.svg`
+const BLUR_PLACEHOLDER = `${DATA_DIR}/placeholder_blur_v4.svg`
 
 function ensureBlurPlaceholder(): void {
   try {
@@ -303,18 +303,16 @@ export function LastFmBox() {
       <For each={tracks}>
         {(item, idx) => {
           const size = idx.peek() === 0 ? 100 : 80
-          // Frame chrome is a 1px border per side and no padding, so the image
-          // hugs the outline. The overlay's request is a minimum, so both
-          // branches settle at outerSize and rows never shift when a track
-          // gains or loses artwork.
-          const outerSize = size + 2
+          // No border, no padding: the overlay is exactly `size`, so the art and
+          // the placeholder tile occupy identical geometry and rows never shift
+          // a pixel when a track gains or loses artwork.
           return (
             <box orientation={Gtk.Orientation.VERTICAL}>
               <box>
                 <overlay
                   class={item.image ? "cover-frame has-art" : "cover-frame is-placeholder"}
-                  widthRequest={outerSize}
-                  heightRequest={outerSize}
+                  widthRequest={size}
+                  heightRequest={size}
                   halign={Gtk.Align.START}
                   valign={Gtk.Align.CENTER}
                 >
