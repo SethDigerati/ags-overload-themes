@@ -102,21 +102,30 @@ box.cpu-red {
   background: #FF0000;
 }
 
-/* Borderless, flush image containers: no border, no padding, no background.
-   Art and placeholder share one box model, so rows never shift a pixel when a
-   track gains or loses artwork. */
+/* Unified cover frame: 2px breathing room, borderless and fully transparent.
+   The background MUST stay transparent — the Last.fm placeholder tile is
+   itself translucent frosted glass, so any container colour shows through the
+   padding as a black ring. Longhand border-width/border-style rather than the
+   `border: none` shorthand, which GTK CSS silently drops. Art and placeholder
+   share one box model, so rows never shift a pixel when a track gains or loses
+   artwork. */
 .cover-frame {
-  padding: 0;
+  padding: 2px;
   border-width: 0;
   border-style: none;
   background-color: transparent;
+  background-image: none;
+  box-shadow: none;
 }
 
 .cover-frame.has-art,
 .cover-frame.is-placeholder {
+  padding: 2px;
   border-width: 0;
   border-style: none;
   background-color: transparent;
+  background-image: none;
+  box-shadow: none;
 }
 
 .cover-art {
@@ -124,6 +133,7 @@ box.cpu-red {
   border-style: none;
   padding: 0;
   border-radius: 0;
+  background-color: transparent;
 }
 
 .placeholder-icon {

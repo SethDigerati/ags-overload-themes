@@ -19,8 +19,10 @@ const IMG_SIZES = ["extralarge", "large", "medium", "small"] as const
 
 // Pre-blurred placeholder tile: GTK's CSS engine has no backdrop blur and
 // ignores `filter:`, so the frosted-glass background is a small SVG whose
-// feGaussianBlur librsvg renders offscreen. Written once when missing; bump
-// the filename version to force a refresh after artwork tweaks.
+// feGaussianBlur librsvg renders offscreen. GTK 4.22+ decodes SVG natively via
+// its built-in GtkSvg texture loader, so this is loaded directly as-is.
+// Written once when missing; bump the filename version to force a refresh
+// after artwork tweaks.
 const BLUR_PLACEHOLDER = `${DATA_DIR}/placeholder_blur_v4.svg`
 
 function ensureBlurPlaceholder(): void {
@@ -303,16 +305,19 @@ export function LastFmBox() {
       <For each={tracks}>
         {(item, idx) => {
           const size = idx.peek() === 0 ? 100 : 80
-          // No border, no padding: the overlay is exactly `size`, so the art and
-          // the placeholder tile occupy identical geometry and rows never shift
-          // a pixel when a track gains or loses artwork.
+          // 2px of padding on all four sides comes out of `.cover-frame`, so
+          // the overlay must be `size + 4` to leave the art (and the
+          // placeholder tile) an exact `size` content box. Art and placeholder
+          // share that geometry, so rows never shift a pixel when a track
+          // gains or loses artwork.
+          const outerSize = size + 4
           return (
             <box orientation={Gtk.Orientation.VERTICAL}>
               <box>
                 <overlay
                   class={item.image ? "cover-frame has-art" : "cover-frame is-placeholder"}
-                  widthRequest={size}
-                  heightRequest={size}
+                  widthRequest={outerSize}
+                  heightRequest={outerSize}
                   halign={Gtk.Align.START}
                   valign={Gtk.Align.CENTER}
                 >
