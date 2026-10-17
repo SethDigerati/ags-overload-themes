@@ -21,23 +21,33 @@ const IMG_SIZES = ["extralarge", "large", "medium", "small"] as const
 // ignores `filter:`, so the frosted-glass background is a small SVG whose
 // feGaussianBlur librsvg renders offscreen. Written once when missing; bump
 // the filename version to force a refresh after artwork tweaks.
-const BLUR_PLACEHOLDER = `${DATA_DIR}/placeholder_blur_v2.svg`
+const BLUR_PLACEHOLDER = `${DATA_DIR}/placeholder_blur_v3.svg`
 
 function ensureBlurPlaceholder(): void {
   try {
     if (GLib.file_test(BLUR_PLACEHOLDER, GLib.FileTest.IS_REGULAR)) return
     writeFile(BLUR_PLACEHOLDER, `<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <filter id="intense-blur" x="-50%" y="-50%" width="200%" height="200%">
-      <feGaussianBlur in="SourceGraphic" stdDeviation="25" />
+    <filter id="intense-blur" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="16" />
     </filter>
   </defs>
-  <rect width="200" height="200" fill="#000000" />
+  <!-- Translucent frosted glass tint (transparent background, no black/blue) -->
+  <rect width="200" height="200" fill="#FFFFFF" fill-opacity="0.05" />
+
   <g filter="url(#intense-blur)">
-    <circle cx="50" cy="50" r="65" fill="#FFE020" opacity="0.65" />
-    <circle cx="150" cy="150" r="75" fill="#D4AF37" opacity="0.50" />
-    <circle cx="140" cy="40" r="45" fill="#FFFFFF" opacity="0.35" />
-    <circle cx="45" cy="160" r="60" fill="#141414" opacity="0.90" />
+    <!-- Soft frosted white light blooms -->
+    <circle cx="45" cy="45" r="50" fill="#FFFFFF" fill-opacity="0.45" />
+    <circle cx="155" cy="155" r="55" fill="#FFFFFF" fill-opacity="0.30" />
+
+    <!-- Theme gold blooms -->
+    <circle cx="140" cy="50" r="55" fill="#FFE020" fill-opacity="0.65" />
+    <circle cx="50" cy="145" r="50" fill="#E3C30D" fill-opacity="0.55" />
+
+    <!-- Diagonal golden refraction lines that smear across the frosted glass -->
+    <line x1="15" y1="30" x2="175" y2="190" stroke="#FFE020" stroke-width="14" stroke-opacity="0.55" stroke-linecap="round" />
+    <line x1="50" y1="15" x2="190" y2="155" stroke="#FFE020" stroke-width="8" stroke-opacity="0.45" stroke-linecap="round" />
+    <line x1="15" y1="95" x2="115" y2="195" stroke="#FFFFFF" stroke-width="8" stroke-opacity="0.35" stroke-linecap="round" />
   </g>
 </svg>`)
   } catch (e) {
@@ -194,12 +204,16 @@ async function enrich(track: Track): Promise<void> {
 }
 
 // One-time migration: remove legacy fixed-name covers (cover_0..3.jpg and
-// timestamped cover_<ts>_<i>.jpg) left by previous versions.
+// timestamped cover_<ts>_<i>.jpg) left by previous versions, plus superseded
+// placeholder tile versions.
 function cleanupLegacy(): void {
   try {
+    const currentTile = BLUR_PLACEHOLDER.slice(BLUR_PLACEHOLDER.lastIndexOf("/") + 1)
     const names = exec(["ls", DATA_DIR]).split("\n").map((n) => n.trim()).filter(Boolean)
     for (const n of names) {
-      if (/^cover_\d\.jpg$/.test(n) || /^cover_\d+_\d+\.jpg$/.test(n)) {
+      const staleCover = /^cover_\d\.jpg$/.test(n) || /^cover_\d+_\d+\.jpg$/.test(n)
+      const staleTile = /^placeholder_blur_.*\.svg$/.test(n) && n !== currentTile
+      if (staleCover || staleTile) {
         try { exec(["rm", "-f", `${DATA_DIR}/${n}`]) } catch { /* ignore */ }
       }
     }
@@ -289,10 +303,11 @@ export function LastFmBox() {
       <For each={tracks}>
         {(item, idx) => {
           const size = idx.peek() === 0 ? 100 : 80
-          // Frame chrome is 2px padding + 1px border per side. The overlay's
-          // request is a minimum, so both branches settle at outerSize and
-          // rows never shift when a track gains or loses artwork.
-          const outerSize = size + 6
+          // Frame chrome is a 1px border per side and no padding, so the image
+          // hugs the outline. The overlay's request is a minimum, so both
+          // branches settle at outerSize and rows never shift when a track
+          // gains or loses artwork.
+          const outerSize = size + 2
           return (
             <box orientation={Gtk.Orientation.VERTICAL}>
               <box>
