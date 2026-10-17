@@ -3,8 +3,8 @@ import { createState, createComputed, For } from "ags"
 import { interval } from "ags/time"
 import { fetch } from "ags/fetch"
 import Gio from "gi://Gio?version=2.0"
-import { env, projectRoot } from "../config"
-import { readFile, writeFile } from "./util"
+import { env, projectRoot, intervals } from "../config"
+import { readFile, writeFile, execAsyncRaw } from "./util"
 
 const API_KEY = env.WEATHER_API_KEY || ""
 const ICON_DIR = `${projectRoot}/assets/icons/`
@@ -31,10 +31,52 @@ function loadCachedLocation(): { city: string; country: string; lat: string; lon
   return null
 }
 
+// An explicit city name pinned in .env. WEATHER_NAME is the preferred alias;
+// WEATHER_CITY is still honoured because that is what older configs set.
+//
+// Placeholder values are normalised away to "" so callers can treat "" as "no
+// real city pinned":
+//   "Custom"  - legacy sentinel this file itself writes when only lat/lon are
+//               pinned, so reading it back must not look like a city.
+//   "Default" - the literal value carried in shipped .env templates. It is not
+//               a place name, and geocoding it would both fail and suppress
+//               OWM's municipality refinement for the live city.
+const PIN_SENTINELS = new Set(["custom", "default"])
+
+function pinnedCity(): string {
+  const v = (env.WEATHER_NAME || env.WEATHER_CITY || "").trim()
+  return PIN_SENTINELS.has(v.toLowerCase()) ? "" : v
+}
+
+// Every geo-IP provider and OWM itself report the country as an ISO 3166-1
+// alpha-2 code ("KE"), which reads badly in the header. Expand it to a full
+// name via Intl so the widget shows "Nairobi, Kenya". Values that are already
+// full names pass straight through untouched.
+function resolveCountry(value: unknown): string {
+  const raw = String(value ?? "").trim()
+  if (!raw) return ""
+  // Only alpha-2 codes need expanding; nothing else is a code.
+  if (!/^[A-Za-z]{2}$/.test(raw)) return raw
+  try {
+    const name = new Intl.DisplayNames(["en"], { type: "region" }).of(raw.toUpperCase())
+    // Verified on this runtime (gjs 1.90.1): an unrecognised code resolves to
+    // the literal string "Unknown Region" rather than echoing the code back.
+    // Reject it (and any other echo) so the header never reads
+    // "Nairobi, Unknown Region" or "Nairobi, KE".
+    if (!name || name.length <= 2 || name === "Unknown Region") return ""
+    return name
+  } catch {
+    return ""
+  }
+}
+
 function seedLocation(): { city: string; country: string } {
   if (env.WEATHER_LAT && env.WEATHER_LON) {
-    return { city: env.WEATHER_CITY || "Custom", country: "" }
+    return { city: pinnedCity() || "Custom", country: "" }
   }
+  // Seed the pinned city so a geocoded .env name never flashes "Loading..."
+  // while Tier 0 resolves it to coordinates.
+  if (pinnedCity()) return { city: pinnedCity(), country: "" }
   return loadCachedLocation() ?? { city: "Loading...", country: "" }
 }
 
@@ -121,81 +163,297 @@ function persistLocation(city: string, country: string, lat: string, lon: string
   } catch (e) { console.error("weather cache write:", e) }
 }
 
-async function fetchLocation() {
-  // Tier 0: manual override from .env — no network needed
+// ── Where-am-i / GeoClue ───────────────────────────────────────────────
+// GeoClue's where-am-i is the only "the system knows where I am" source that
+// needs no extra service, so try it first. It is not installed on every system
+// (it is a hard dependency of nothing here), so every path is allowed to miss
+// and we fall through to the next tier.
+const WHERE_AM_I = [
+  "/usr/lib/geoclue-2.0/demos/where-am-i",
+  "/usr/libexec/geoclue-2.0/demos/where-am-i",
+  "where-am-i",
+]
+
+async function tryGeoclue(): Promise<{ lat: string; lon: string } | null> {
+  for (const bin of WHERE_AM_I) {
+    // execAsyncRaw resolves {ok:false} rather than throwing when the binary is
+    // missing, so a missing candidate is just another miss.
+    const { ok, out } = await execAsyncRaw([bin, "-t", "4", "-a", "4"])
+    if (!ok || !out) continue
+    const latM = out.match(/Latitude:\s*(-?[\d.]+)/i)
+    const lonM = out.match(/Longitude:\s*(-?[\d.]+)/i)
+    if (latM?.[1] && lonM?.[1]) return { lat: latM[1], lon: lonM[1] }
+  }
+  return null
+}
+
+// ── Connected Wi-Fi BSSID ───────────────────────────────────────────────
+// nmcli (NetworkManager) is the better source because it enumerates
+// *neighbouring* APs, but it is absent on wpa_supplicant/iwd systems and a raw
+// scan needs CAP_NET_ADMIN, so in practice this yields the one AP we are
+// currently joined to.
+async function connectedBssids(): Promise<Array<{ macAddress: string; signalStrength?: number }>> {
+  const aps: Array<{ macAddress: string; signalStrength?: number }> = []
+
+  const nmcli = await execAsyncRaw([
+    "nmcli", "-t", "-f", "BSSID,SIGNAL", "dev", "wifi", "list",
+  ])
+  if (nmcli.ok && nmcli.out) {
+    for (const line of nmcli.out.split("\n")) {
+      // nmcli -t escapes the colons inside a MAC as "\:"
+      const m = line.trim().match(/^([0-9a-f]{2}(?::[0-9a-f]{2}){5}):(-?\d+)/i)
+      if (m) {
+        aps.push({ macAddress: m[1].toLowerCase(), signalStrength: Number(m[2]) })
+        if (aps.length >= 8) break
+      }
+    }
+    if (aps.length) return aps
+  }
+
+  const iface = env.WLAN_INTERFACE || "wlan0"
+  const link = await execAsyncRaw(["iw", "dev", iface, "link"])
+  if (!link.ok) return aps
+  const bssid = link.out.match(/Connected to ([0-9a-f:]{17})/i)
+  const sig = link.out.match(/signal:\s*(-?\d+)/i)
+  if (bssid?.[1]) {
+    aps.push({
+      macAddress: bssid[1].toLowerCase(),
+      signalStrength: sig?.[1] ? Number(sig[1]) : undefined,
+    })
+  }
+  return aps
+}
+
+// ── BeaconDB (the open successor to Mozilla Location Service) ──────────
+//
+// Important: when BeaconDB does not recognise the submitted BSSIDs it does NOT
+// fail. It answers 200 with `"fallback": "ipf"` and an IP-derived position that
+// is typically tens of kilometres off. Accepting that would print a confident
+// "located via Wi-Fi" line while having silently performed the very IP lookup
+// this tier exists to avoid, so reject it explicitly.
+const BEACONDB_MIN_ACCURACY = 2000   // metres
+
+async function tryWifiPositioning(): Promise<{ lat: string; lon: string } | null> {
+  const aps = await connectedBssids()
+  if (!aps.length) {
+    console.log("weather: no Wi-Fi BSSIDs available for positioning")
+    return null
+  }
+  const data = await safeJson(await fetch("https://beacondb.net/v1/geolocate", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ wifiAccessPoints: aps }),
+  }).catch((e) => {
+    console.error("weather: BeaconDB request failed:", e)
+    return null
+  }))
+  if (!data?.location?.lat || !data?.location?.lng) return null
+
+  const bssids = aps.map((a) => a.macAddress).join(" ")
+  if (data.fallback === "ipf") {
+    console.log("weather: BeaconDB does not know these BSSIDs, ignoring its IP fallback:", bssids)
+    return null
+  }
+  if (typeof data.accuracy === "number" && data.accuracy > BEACONDB_MIN_ACCURACY) {
+    console.log("weather: BeaconDB accuracy", data.accuracy, "m is too coarse, rejecting")
+    return null
+  }
+  console.log("weather: BeaconDB matched", bssids, "accuracy", data.accuracy, "m")
+  return { lat: String(data.location.lat), lon: String(data.location.lng) }
+}
+
+// ── Reverse geocoding: coordinates → the town you are actually in ───────
+//
+// Use api-bdc.io rather than api.bigdatacloud.net: the latter answers HTTP 307
+// redirecting to the former, and `ags/fetch` does not follow redirects (nor does
+// Soup.Session, and the wrapper does not even populate response headers), so the
+// canonical host would simply fail.
+//
+// Note on Kenyan addresses: BigDataCloud's `city` is often a ward or estate
+// (Narok's resolves to "Olulunga") while `principalSubdivision` is the town the
+// user actually means. Pinning WEATHER_NAME remains the deterministic fix.
+async function reverseGeocode(
+  lat: string, lon: string,
+): Promise<{ city: string; country: string } | null> {
+  const data = await safeJson(await fetch(
+    `https://api-bdc.io/data/reverse-geocode-client?latitude=${encodeURIComponent(lat)}` +
+    `&longitude=${encodeURIComponent(lon)}&localityLanguage=en`,
+  ).catch(() => null))
+  if (data?.countryName) {
+    const city = data.city || data.locality || data.principalSubdivision
+    if (city) return { city, country: data.countryName }
+  }
+
+  // OWM's own reverse geocoder as a fallback; it also hands back a refined
+  // municipality name for free.
+  const owm = await safeJson(await fetch(
+    `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=1&appid=${API_KEY}`,
+  ).catch(() => null))
+  if (Array.isArray(owm) && owm[0]?.name) {
+    return { city: owm[0].name, country: resolveCountry(owm[0].country) }
+  }
+  return null
+}
+
+// Active location detection. Returns true when usable coordinates are set
+// (including from the disk cache), false only when every tier failed.
+//
+// Order matters: an explicit .env city beats geo-IP, because Kenyan
+// cellular/fiber CGNAT routes through regional hubs and a subscriber in Narok
+// is routinely reported as a Safaricom hub in Nairobi. The geo-IP tiers are
+// ordered by how well they resolve African ISPs first, then by how likely they
+// are to answer an unauthenticated call at all.
+async function fetchLocation(): Promise<boolean> {
+  // Tier 0: .env city name resolved through OWM's geocoder, which turns a name
+  // into real coordinates. Handles WEATHER_NAME and WEATHER_CITY alike.
+  const pinned = pinnedCity()
+  if (pinned) {
+    try {
+      console.log("weather: resolving .env city via OWM geocoder", pinned)
+      const data = await safeJson(await fetch(
+        `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(pinned)}&limit=1&appid=${API_KEY}`,
+      ).catch(() => null))
+      if (data?.[0]?.lat && data?.[0]?.lon) {
+        const country = resolveCountry(data[0].country)
+        console.log("weather: got location (OWM geocoder)", pinned, country)
+        persistLocation(pinned, country, String(data[0].lat), String(data[0].lon))
+        return true
+      }
+      console.log("weather: OWM geocoder found nothing for", pinned, "trying geo-IP")
+    } catch (e) { console.error("weather OWM geocoder error:", e) }
+  }
+
+  // Tier 1: manual lat/lon from .env — no geocoding, no network needed.
   if (env.WEATHER_LAT && env.WEATHER_LON) {
     const lat = String(env.WEATHER_LAT)
     const lon = String(env.WEATHER_LON)
     console.log("weather: using manual override location", lat, lon)
-    persistLocation(env.WEATHER_CITY || "Custom", "", lat, lon)
-    return
+    persistLocation(pinned || "Custom", "", lat, lon)
+    return true
   }
-  // Tier 1: ipinfo.io
+
+  // Tier 2: GeoClue's where-am-i — the desktop location daemon, when present.
+  // It reports real coordinates rather than a CGNAT exit point, so it can
+  // resolve a subscriber that geo-IP pins to a hub hundreds of km away.
+  const geoclue = await tryGeoclue()
+  if (geoclue) {
+    console.log("weather: got coords from GeoClue", geoclue.lat, geoclue.lon)
+    const place = await reverseGeocode(geoclue.lat, geoclue.lon)
+    if (place) {
+      console.log("weather: got location (GeoClue)", place.city, place.country)
+      persistLocation(place.city, place.country, geoclue.lat, geoclue.lon)
+      return true
+    }
+    console.log("weather: GeoClue coords did not reverse-geocode, falling through")
+  }
+
+  // Tier 3: Wi-Fi BSSID triangulation via BeaconDB.
+  const wifi = await tryWifiPositioning()
+  if (wifi) {
+    console.log("weather: got coords from Wi-Fi BeaconDB", wifi.lat, wifi.lon)
+    const place = await reverseGeocode(wifi.lat, wifi.lon)
+    if (place) {
+      console.log("weather: got location (Wi-Fi BeaconDB)", place.city, place.country)
+      persistLocation(place.city, place.country, wifi.lat, wifi.lon)
+      return true
+    }
+    console.log("weather: BeaconDB coords did not reverse-geocode, falling through")
+  }
+
+  // Tier 4: ipwho.is — terminates on the city a Kenyan ISP actually serves
+  // more reliably than the commercial databases, and does not 429 anonymous
+  // callers. country_code is the ISO code; country is the full name.
+  try {
+    console.log("weather: fetching location from ipwho.is")
+    const data = await safeJson(await fetch("https://ipwho.is/").catch(() => null))
+    if (data?.success !== false && data?.latitude && data?.longitude) {
+      const country = resolveCountry(data.country_code || data.country)
+      console.log("weather: got location (ipwho.is)", data.city, country)
+      persistLocation(
+        data.city || "Unknown", country,
+        String(data.latitude), String(data.longitude),
+      )
+      return true
+    }
+    console.log("weather: ipwho.is failed, trying fallback")
+  } catch (e) { console.error("weather ipwho.is error:", e) }
+
+  // Tier 5: ip-api.com — plain HTTP, generous quota, good Kenyan city coverage.
+  try {
+    console.log("weather: fetching location from ip-api.com")
+    const data = await safeJson(await fetch("http://ip-api.com/json/").catch(() => null))
+    if (data?.status === "success" && data?.latitude && data?.longitude) {
+      const country = resolveCountry(data.countryCode || data.country)
+      console.log("weather: got location (ip-api.com)", data.city, country)
+      persistLocation(
+        data.city || "Unknown", country,
+        String(data.latitude), String(data.longitude),
+      )
+      return true
+    }
+    console.log("weather: ip-api.com failed, trying fallback")
+  } catch (e) { console.error("weather ip-api.com error:", e) }
+
+  // Tier 6: ipapi.co — generous free tier.
+  try {
+    console.log("weather: fetching location from ipapi.co")
+    const data = await safeJson(await fetch("https://ipapi.co/json/").catch(() => null))
+    if (data?.latitude && data?.longitude) {
+      const country = resolveCountry(data.country_code || data.country_name)
+      console.log("weather: got location (ipapi.co)", data.city, country)
+      persistLocation(
+        data.city || "Unknown", country,
+        String(data.latitude), String(data.longitude),
+      )
+      return true
+    }
+    console.log("weather: ipapi.co failed, trying fallback")
+  } catch (e) { console.error("weather ipapi.co error:", e) }
+
+  // Tier 7: freeipapi (note: canonical host is free.freeipapi.com)
+  try {
+    console.log("weather: fetching location from freeipapi")
+    const data = await safeJson(await fetch("https://free.freeipapi.com/api/v1/json").catch(() => null))
+    if (data?.latitude && data?.longitude) {
+      const country = resolveCountry(data.country_code || data.countryName)
+      console.log("weather: got location (freeipapi)", data.cityName, country)
+      persistLocation(
+        data.cityName || "Unknown", country,
+        String(data.latitude), String(data.longitude),
+      )
+      return true
+    }
+    console.log("weather: freeipapi failed, trying fallback")
+  } catch (e) { console.error("weather freeipapi error:", e) }
+
+  // Tier 8: ipinfo.io — most likely to be rate-limited, so it goes last.
   try {
     console.log("weather: fetching location from ipinfo")
     const data = await safeJson(await fetch("https://ipinfo.io/json").catch(() => null))
     if (data?.city && data?.loc) {
       const [lat, lon] = String(data.loc).split(",")
       if (lat && lon) {
-        console.log("weather: got location (ipinfo)", data.city, data.country, data.loc)
-        persistLocation(data.city || "Unknown", data.country || "", lat.trim(), lon.trim())
-        return
+        const country = resolveCountry(data.country_code || data.country)
+        console.log("weather: got location (ipinfo)", data.city, country, data.loc)
+        persistLocation(data.city || "Unknown", country, lat.trim(), lon.trim())
+        return true
       }
     }
     console.log("weather: ipinfo failed, trying fallback")
   } catch (e) { console.error("weather ipinfo error:", e) }
-  // Tier 2: freeipapi (note: canonical host is free.freeipapi.com)
-  try {
-    console.log("weather: fetching location from freeipapi")
-    const data = await safeJson(await fetch("https://free.freeipapi.com/api/v1/json").catch(() => null))
-    if (data?.latitude && data?.longitude) {
-      console.log("weather: got location (freeipapi)", data.cityName, data.countryName)
-      persistLocation(
-        data.cityName || "Unknown", data.countryName || "",
-        String(data.latitude), String(data.longitude),
-      )
-      return
-    }
-    console.log("weather: freeipapi failed, trying fallback")
-  } catch (e) { console.error("weather freeipapi error:", e) }
-  // Tier 3: ipapi.co
-  try {
-    console.log("weather: fetching location from ipapi.co")
-    const data = await safeJson(await fetch("https://ipapi.co/json/").catch(() => null))
-    if (data?.latitude && data?.longitude) {
-      console.log("weather: got location (ipapi.co)", data.city, data.country_name)
-      persistLocation(
-        data.city || "Unknown", data.country_name || "",
-        String(data.latitude), String(data.longitude),
-      )
-      return
-    }
-    console.log("weather: ipapi.co failed, trying fallback")
-  } catch (e) { console.error("weather ipapi.co error:", e) }
-  // Tier 3b: ipwho.is (same shape, generous free tier)
-  try {
-    console.log("weather: fetching location from ipwho.is")
-    const data = await safeJson(await fetch("https://ipwho.is/").catch(() => null))
-    if (data?.success !== false && data?.latitude && data?.longitude) {
-      console.log("weather: got location (ipwho.is)", data.city, data.country)
-      persistLocation(
-        data.city || "Unknown", data.country || "",
-        String(data.latitude), String(data.longitude),
-      )
-      return
-    }
-    console.log("weather: ipwho.is failed, trying cache")
-  } catch (e) { console.error("weather ipwho.is error:", e) }
-  // Tier 4: last known disk cache
+
+  // Tier 9: last known disk cache — the only non-network fallback. An older
+  // cache may hold a bare country code, so normalise it on the way out.
   const cached = loadCachedLocation()
   if (cached) {
     console.log("weather: using cached location", cached.city, cached.lat, cached.lon)
-    setLocation({ city: cached.city, country: cached.country })
+    setLocation({ city: cached.city, country: resolveCountry(cached.country) })
     setLatLon({ lat: cached.lat, lon: cached.lon })
-    return
+    return true
   }
   console.error("weather: all location tiers failed")
   setLocation({ city: "Location Error", country: "" })
+  return false
 }
 
 async function fetchWeather() {
@@ -206,6 +464,19 @@ async function fetchWeather() {
     const data = await safeJson(await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${latLon().lat}&lon=${latLon().lon}&appid=${API_KEY}&units=metric`).catch(() => null))
     if (!data) { console.error("weather: empty/invalid API response"); return }
     if (data.cod === 200) {
+      // OpenWeatherMap returns the exact meteorological municipality in
+      // data.name and the ISO code in data.sys.country, which is more precise
+      // than any IP-geolocation guess. Adopt it unless the user pinned a city
+      // by hand. Done before the no-change early return below so the location
+      // still resyncs on polls where temperature and description are identical.
+      if (data.name && !pinnedCity()) {
+        const country = resolveCountry(data.sys?.country) || location().country
+        if (data.name !== location().city || country !== location().country) {
+          console.log("weather: location synced from OWM", data.name, country)
+          setLocation({ city: data.name, country })
+        }
+      }
+
       const w = data.weather[0]
       const isDay = w.icon.endsWith("d")
       const windDeg = data.wind.deg || 0
