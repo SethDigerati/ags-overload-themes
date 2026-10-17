@@ -553,34 +553,83 @@ async function fetchForecast() {
   } catch (e) { console.error("weather forecast:", e) }
 }
 
-async function updateWeather() {
-  if (!latLon().lat) {
-    await fetchLocation()
+// `refreshLocation` exists because latLon is pre-seeded from the on-disk cache
+// at startup, which makes `!latLon().lat` permanently false. Guarding location
+// detection on it meant fetchLocation() never ran on startup, on poll, or on
+// reconnect, and the widget stayed pinned to whatever coordinates were cached.
+// Callers that need live detection pass true.
+async function updateWeather(refreshLocation = false): Promise<void> {
+  let located = false
+  if (refreshLocation || !latLon().lat) {
+    located = await fetchLocation()
   }
+  // `located` false with coords present just means we reused the seed; what
+  // actually gates the fetch is having coordinates at all.
   if (latLon().lat) {
     await Promise.all([fetchWeather(), fetchForecast()])
+  } else {
+    console.error("weather: no coordinates after location detection, skipping fetch")
   }
+  if (refreshLocation && !located) console.error("weather: location detection failed")
 }
 
-interval(600000, () => { updateWeather().catch((e) => console.error("weather poll:", e)) })
+interval(intervals.weather, () => { updateWeather(false).catch((e) => console.error("weather poll:", e)) })
 Gio.NetworkMonitor.get_default()?.connect("network-changed", (_m: any, online: boolean) => {
   if (!online) return
-  updateWeather().catch((e) => console.error("weather reconnect:", e))
+  // A reconnect is exactly when the cached coordinates are most likely stale,
+  // so always re-query active location.
+  console.log("weather: network reconnect, forcing location refresh")
+  updateWeather(true).catch((e) => console.error("weather reconnect:", e))
 })
-updateWeather().catch((e) => console.error("weather location:", e))
+updateWeather(true).catch((e) => console.error("weather location init:", e))
 
 export function WeatherBox() {
   return (
     <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
       <label wrap xalign={0} class="section-header" label="WEATHER" />
       <box class="hr-line" />
+      {/* Row 1: active location, full width */}
       <box>
-        <label ellipsize={3} maxWidthChars={30} wrap class="gray1" hexpand xalign={0}
-          label={createComputed(() => { const l = location(); return `${l.city}${l.country ? `, ${l.country}` : ""}` })} />
-        <label ellipsize={3} maxWidthChars={20} class="gray2 moon-name" label={createComputed(() => moon().name)} />
-        <label ellipsize={3} maxWidthChars={3} class="moon-icon" label={createComputed(() => moon().icon)} />
+        <label
+          ellipsize={3}
+          maxWidthChars={50}
+          wrap
+          class="gray1"
+          hexpand
+          xalign={0}
+          label={createComputed(() => {
+            const l = location()
+            return `${l.city}${l.country ? `, ${l.country}` : ""}`
+          })}
+        />
       </box>
-      <label ellipsize={3} maxWidthChars={40} wrap xalign={0} class="weather-desc" label={createComputed(() => weather().description)} />
+
+      {/* Row 2: conditions on the left, moon phase on the right */}
+      <box>
+        <label
+          ellipsize={3}
+          maxWidthChars={24}
+          wrap
+          xalign={0}
+          hexpand
+          class="weather-desc"
+          label={createComputed(() => weather().description)}
+        />
+        <label
+          ellipsize={3}
+          maxWidthChars={20}
+          class="gray2 moon-name"
+          valign={Gtk.Align.CENTER}
+          label={createComputed(() => moon().name)}
+        />
+        <label
+          ellipsize={3}
+          maxWidthChars={3}
+          class="moon-icon"
+          valign={Gtk.Align.CENTER}
+          label={createComputed(() => moon().icon)}
+        />
+      </box>
       <box>
         <box class="weather-row">
           <image class="weather-icon" marginStart={10} file={createComputed(() => `${ICON_DIR}${weather().icon}.png`)} pixelSize={100} />
