@@ -593,42 +593,89 @@ export function formatSpeed(kib: number): string {
 
 const TOP_N = 10
 
-function num(v: string | undefined, divisor = 1): string {
-  const n = parseFloat(v ?? "")
-  if (!Number.isFinite(n)) return "0"
-  return (n / divisor).toFixed(1)
+interface ParsedProc {
+  pid: string
+  threads: string
+  cpuNum: number
+  cpu: string
+  memNum: number
+  vsize: string
+  size: string
+  name: string
 }
 
-async function collectTopProcs(): Promise<void> {
-  const out = await execAsyncFast(["ps", "-eo", "pid,nlwp,%cpu,comm", "--sort=-%cpu", "--no-headers"])
+// One ps invocation feeds both the CPU and the Memory task tables.
+//
+// Both lists are cut from the same snapshot, so the two tables can never
+// disagree with each other, and we fork ps once per tick instead of twice.
+async function collectProcesses(): Promise<void> {
+  if (!visible.has("CpuBox") && !visible.has("MemoryBox")) return
+
+  // No --sort: letting procps sort forces it to materialise and sort the whole
+  // table before printing, and (see below) it makes ps far more likely to
+  // report a bogus CPU figure for itself. Sorting 300 parsed rows here is
+  // microseconds and keeps the columns identical between the two tables.
+  const out = await execAsyncFast([
+    "ps", "-eo", "pid,nlwp,%cpu,%mem,vsize,rss,comm", "--no-headers",
+  ])
   if (!out) return
-  const rows = out.split("\n").filter(l => l.trim()).slice(0, TOP_N)
-  setTopProcs(rows.map((line) => {
-    const parts = line.trim().split(/\s+/)
-    return {
+
+  const procs: ParsedProc[] = []
+  for (const line of out.split("\n")) {
+    const trimmed = line.trim()
+    if (!trimmed) continue
+    const parts = trimmed.split(/\s+/)
+    if (parts.length < 7) continue
+
+    // comm is the last column and may itself contain spaces
+    const name = parts.slice(6).join(" ") || "?"
+
+    // ps reports its %CPU as (its own CPU time) / (its own elapsed time).
+    // Because it lives for only a few milliseconds that ratio is a multiple of
+    // a whole core — measured on this box, 13 of 25 invocations claimed 100% or
+    // 200% — and with --sort=-%cpu it therefore put itself at the top of the
+    // very table we were about to read. Never surface the collector or its
+    // helpers; they are measurement artefacts, not real load.
+    if (name === "ps" || name === "top" || name === "sleep") continue
+
+    const cpuNum = parseFloat(parts[2]) || 0
+    const memNum = parseFloat(parts[3]) || 0
+    const vsizeKB = parseInt(parts[4]) || 0
+    const rssKB = parseInt(parts[5]) || 0
+
+    procs.push({
       pid: parts[0] || "",
-      name: parts.slice(3).join(" ") || "?",
       threads: parts[1] || "0",
-      cpu: num(parts[2], NCPUS),
-    }
-  }))
-}
-
-async function collectTopMemProcs(): Promise<void> {
-  const out = await execAsyncFast(["ps", "-eo", "pid,%mem,vsize,rss,comm", "--sort=-%mem", "--no-headers"])
-  if (!out) return
-  const rows = out.split("\n").filter(l => l.trim()).slice(0, TOP_N)
-  setTopMemProcs(rows.map((line) => {
-    const parts = line.trim().split(/\s+/)
-    const vsizeKB = parseInt(parts[2]) || 0
-    const rssKB = parseInt(parts[3]) || 0
-    return {
-      pid: parts[0] || "",
-      name: parts.slice(4).join(" ") || "?",
+      cpuNum,
+      // normalise across cores: ps reports up to 100 * NCPUS
+      cpu: (cpuNum / NCPUS).toFixed(1),
+      memNum,
       vsize: vsizeKB > 0 ? formatBytes(vsizeKB * 1024) : "0",
       size: rssKB > 0 ? formatBytes(rssKB * 1024) : "0",
-    }
-  }))
+      name,
+    })
+  }
+  if (!procs.length) return
+
+  if (visible.has("CpuBox")) {
+    procs.sort((a, b) => b.cpuNum - a.cpuNum)
+    setTopProcs(procs.slice(0, TOP_N).map((p) => ({
+      pid: p.pid,
+      name: p.name,
+      threads: p.threads,
+      cpu: p.cpu,
+    })))
+  }
+
+  if (visible.has("MemoryBox")) {
+    procs.sort((a, b) => b.memNum - a.memNum)
+    setTopMemProcs(procs.slice(0, TOP_N).map((p) => ({
+      pid: p.pid,
+      name: p.name,
+      vsize: p.vsize,
+      size: p.size,
+    })))
+  }
 }
 
 // tick A (offset 0ms): cpu stat + mem + sys
@@ -687,8 +734,9 @@ async function slowUpdate(): Promise<void> {
       collectNetConns()
       await collectNetInfoAsync()
     }
-    if (visible.has("CpuBox")) await collectTopProcs()
-    if (visible.has("MemoryBox")) await collectTopMemProcs()
+    if (visible.has("CpuBox") || visible.has("MemoryBox")) {
+      await collectProcesses()
+    }
   } catch (e) { console.error("slow update:", e) }
   finally { _fetching = false }
 }
