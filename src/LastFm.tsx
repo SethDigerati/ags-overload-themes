@@ -299,9 +299,13 @@ fetchLastfm().catch((e) => console.error("lastfm init:", e))
 export function LastFmBox() {
   return (
     <box orientation={Gtk.Orientation.VERTICAL} widthRequest={399}>
-      <label wrap xalign={0} class="section-header" label="LAST.FM" />
+      <label xalign={0} class="section-header" label="LAST.FM" />
       <box class="hr-line" />
-      <label ellipsize={3} maxWidthChars={40} wrap class="accent" label={createComputed(() => nowPlaying())} xalign={0} />
+      {/* Never `wrap` on a label that also ellipsizes: Pango treats the two as
+          mutually exclusive and silently drops the wrap, but leaving the
+          contradictory attribute in place is a trap for the next edit. Widths
+          are measured, not guessed — see the calibration note on Track. */}
+      <label ellipsize={3} maxWidthChars={35} class="accent" label={createComputed(() => nowPlaying())} xalign={0} />
       <For each={tracks}>
         {(item, idx) => {
           const size = idx.peek() === 0 ? 100 : 80
@@ -343,29 +347,35 @@ export function LastFmBox() {
                   />
                 </overlay>
               <box class="track-details" orientation={Gtk.Orientation.VERTICAL} hexpand valign={Gtk.Align.CENTER}>
+                {/* `maxWidthChars` is measured, not guessed: against the 399px
+                    column with the 104px idx-0 cover and the widest caption
+                    ("Artist: ", 8 chars). At Iosevka 10.5pt the advance is
+                    exactly 7px, so this row wants 400px at 34 chars — 1px over.
+                    32 lands at 386px, leaving ~13px of headroom for font
+                    metric rounding. */}
                 <box>
                   <label class="accent" label="Track: " xalign={0} />
-                  <label wrap maxWidthChars={40} class="gray2" label={item.track} xalign={0} hexpand />
+                  <label ellipsize={3} maxWidthChars={32} class="gray2" label={item.track} xalign={0} hexpand />
                 </box>
                 <box>
                   <label class="accent" label="Artist: " xalign={0} />
-                  <label wrap maxWidthChars={40} class="gray3" label={item.artist} xalign={0} hexpand />
+                  <label ellipsize={3} maxWidthChars={32} class="gray3" label={item.artist} xalign={0} hexpand />
                 </box>
                 <box>
                   <label class="accent" label="Album: " xalign={0} />
-                  <label wrap maxWidthChars={40} class="gray3" label={item.album} xalign={0} hexpand />
+                  <label ellipsize={3} maxWidthChars={32} class="gray3" label={item.album} xalign={0} hexpand />
                 </box>
                 {idx.peek() === 0 && (
                   <box>
                     <label class="accent" label="Duration: " xalign={0} />
-                    <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.duration} xalign={0} />
+                    <label ellipsize={3} maxWidthChars={10} class="gray3" label={item.duration} xalign={0} />
                   </box>
                 )}
                 <box>
                   <label class="accent" label="Plays: " xalign={0} />
-                  <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.playcount} xalign={0} />
+                  <label ellipsize={3} maxWidthChars={10} class="gray3" label={item.playcount} xalign={0} />
                   <label class="accent" label="Artist plays: " xalign={0} />
-                  <label ellipsize={3} maxWidthChars={10} wrap class="gray3" label={item.artistPlaycount} xalign={0} />
+                  <label ellipsize={3} maxWidthChars={10} class="gray3" label={item.artistPlaycount} xalign={0} />
                 </box>
               </box>
             </box>
