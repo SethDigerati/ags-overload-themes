@@ -1,6 +1,6 @@
 window {
   background-color: transparent;
-  color: #EAEAEA;
+  color: #FFFFFF;
   font-family: "Iosevka";
   font-size: 10.5pt;
   border: 0;
@@ -221,4 +221,3 @@ drawingarea.graph {
 drawingarea.cpu-graph {
   margin-bottom: 5px;
 }
-
